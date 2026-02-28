@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Endfield Forge</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <img src="icons/icon128.png" alt="Logo" class="logo" />
+        <h1>Endfield Forge</h1>
+      </div>
+
+      <div class="progress-container">
+        <div class="progress-stats">
+          <span id="progress-label">Initializing</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+      </div>
+
+      <div id="page-1" class="setup-page">
+        <div class="card setup-card">
+          <div class="status-row-center">
+            <span class="label">STATUS:</span>
+            <span id="status-text" class="value-orange">Disconnected</span>
+          </div>
+
+          <div class="centered-control-row">
+            <button id="btn-skport-login" class="btn-action status-checking wide-link">
+              Open SKPORT Sign-in
+            </button>
+          </div>
+
+          <div class="info-box">
+            <span class="info-icon-yellow">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="11" /><line x1="12" y1="7" x2="12.01" y2="7" /></svg>
+            </span>
+            <p class="info-text"><strong>Automatic Sync:</strong> The Forge links via the active session in your game tab.</p>
+          </div>
+
+          <div class="nav-buttons internal">
+            <button id="skport-next-btn" class="btn-action">Next</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-google" class="setup-page" style="display: none;">
+        <div class="card setup-card">
+          <div class="centered-control-row">
+            <button id="google-auth-btn" class="btn-google wide-link">
+              <svg xmlns="http://www.w3.org/2000/svg" class="google-icon" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M39.2 24.45c0-1.55-.16-3.04-.43-4.45H20v8h10.73c-.45 2.53-1.86 4.68-4 6.11v5.05h6.5c3.78-3.48 5.97-8.62 5.97-14.71z"></path><path fill="#34A853" d="M20 44c5.4 0 9.92-1.79 13.24-4.84l-6.5-5.05C24.95 35.3 22.67 36 20 36c-5.19 0-9.59-3.51-11.15-8.23h-6.7v5.2C5.43 39.51 12.18 44 20 44z"></path><path fill="#FABB05" d="M8.85 27.77c-.4-1.19-.62-2.46-.62-3.77s.22-2.58.62-3.77v-5.2h-6.7C.78 17.73 0 20.77 0 24s.78 6.27 2.14 8.97l6.71-5.2z"></path><path fill="#E94235" d="M20 12c2.93 0 5.55 1.01 7.62 2.98l5.76-5.76C29.92 5.98 25.39 4 20 4 12.18 4 5.43 8.49 2.14 15.03l6.7 5.2C10.41 15.51 14.81 12 20 12z"></path></svg>
+              Sign in with Google
+            </button>
+          </div>
+
+          <div id="google-auth-status" class="hidden-status">
+            <a href="#" id="google-signout-link" class="small-link">Sign out from Google</a>
+          </div>
+
+          <div class="info-box">
+            <span class="info-icon-yellow">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="11" /><line x1="12" y1="7" x2="12.01" y2="7" /></svg>
+            </span>
+            <p class="info-text"><strong>Google Drive:</strong> Authorize the Forge to manage your automation script in the cloud.</p>
+          </div>
+
+          <div class="nav-buttons internal">
+            <button id="back-to-1-from-google" class="btn-secondary">Back</button>
+            <button id="google-next-btn" class="btn-action" disabled>Next</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-2" class="setup-page" style="display: none;">
+        <div class="card setup-card">
+          <div class="toggle-row">
+            <span class="label">Discord Notifications</span>
+            <label class="switch">
+              <input type="checkbox" id="discord-toggle" checked />
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div id="discord-fields-wrapper" class="full-width">
+            <div id="discord-part-id">
+              <div class="input-header-row">
+                <span class="label">Discord User ID</span>
+                <span id="show-id-help" class="help-link">How to find it?</span>
+              </div>
+              <input type="text" id="discordId" placeholder="Paste Discord User ID..." class="centered-input" />
+              <div id="id-error-msg" class="error-text">⚠ Invalid ID</div>
+              
+              <div class="separator-with-text">
+                <span class="separator-line"></span>
+                <span class="separator-text">Or</span>
+                <span class="separator-line"></span>
+              </div>
+              
+              <div class="centered-control-row">
+                <button id="discord-auth-btn" class="btn-discord wide-link">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="discord-icon" viewBox="0 0 16 16"><path d="M13.545 2.907a13.2 13.2 0 0 0-3.257-1.011.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.2 12.2 0 0 0-3.658 0 8 8 0 0 0-.412-.833.05.05 0 0 0-.052-.025c-1.125.194-2.22.534-3.257 1.011a.04.04 0 0 0-.021.018C.356 6.024-.213 9.047.066 12.032q.003.022.021.037a13.3 13.3 0 0 0 3.995 2.02.05.05 0 0 0 .056-.019q.463-.63.818-1.329a.05.05 0 0 0-.01-.059l-.018-.011a9 9 0 0 1-1.248-.595.05.05 0 0 1-.02-.066l.015-.019q.127-.095.248-.195a.05.05 0 0 1 .051-.007c2.619 1.196 5.454 1.196 8.041 0a.05.05 0 0 1 .053.007q.121.1.248.195a.05.05 0 0 1-.004.085 8 8 0 0 1-1.249.594.05.05 0 0 0-.03.03.05.05 0 0 0 .003.041c.24.465.515.909.817 1.329a.05.05 0 0 0 .056.019 13.2 13.2 0 0 0 4.001-2.02.05.05 0 0 0 .021-.037c.334-3.451-.559-6.449-2.366-9.106a.03.03 0 0 0-.02-.019m-8.198 7.307c-.789 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.45.73 1.438 1.613 0 .888-.637 1.612-1.438 1.612m5.316 0c-.788 0-1.438-.724-1.438-1.612s.637-1.613 1.438-1.613c.807 0 1.451.73 1.438 1.613 0 .888-.631 1.612-1.438 1.612"/></svg>
+                  <span id="discord-auth-btn-text">Connect with Discord</span>
+                </button>
+              </div>
+              
+              <div id="discord-switch-wrapper" style="display: none;">
+                <button id="discord-switch-btn" class="btn-secondary wide-link" style="margin-top: 8px;">Sign out from Discord</button>
+              </div>
+            </div>
+            
+              <!-- Webhook sub-step: shown when notifications are enabled and sub-step = WEBHOOK -->
+              <div id="discord-part-webhook" class="full-width" style="display: none; margin-top:12px;">
+                <div class="input-header-row">
+                  <span class="label">Discord Webhook</span>
+                  <a id="discord-signout-link" class="small-link" href="#">Sign out</a>
+                </div>
+                <input type="text" id="webhook" placeholder="https://discord.com/api/webhooks/..." class="centered-input" />
+                <div id="webhook-error-msg" class="error-text">⚠ Invalid Webhook URL</div>
+                
+                <div class="input-header-row" style="margin-top: 12px;">
+                  <span class="label">In-game Username (Optional)</span>
+                </div>
+                <input type="text" id="accountNickname" placeholder="Your in-game username..." class="centered-input" />
+                
+                <div class="centered-control-row">
+                  <button id="save-webhook-btn" class="btn-action wide-link">Save Webhook</button>
+                </div>
+              </div>
+          </div>
+
+          <div class="info-box">
+            <span class="info-icon-yellow">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="11" /><line x1="12" y1="7" x2="12.01" y2="7" /></svg>
+            </span>
+            <p class="info-text"><strong>Direct Alerts:</strong> Link your ID for private status notifications.</p>
+          </div>
+
+          <div class="nav-buttons internal">
+            <button id="back-from-2" class="btn-secondary">Back</button>
+            <button id="next-from-2" class="btn-action" disabled>Next</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-3" class="setup-page" style="display: none;">
+        <div class="card setup-card">
+          <div class="summary-box">
+            <div class="detail-row">
+              <span class="detail-label">SKPORT Link</span>
+              <div class="status-value-group">
+                <span class="status-dot online"></span>
+                <span id="stat-skport-name" class="detail-value value-green">Connected</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Discord Alerts</span>
+              <div class="status-value-group">
+                <span class="status-dot online" id="dot-discord-summary"></span>
+                <span id="stat-discord-id" class="detail-value">Enabled</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Username</span>
+              <span id="stat-nickname" class="detail-value">-</span>
+            </div>
+          </div>
+
+          <div id="deploy-controls" class="nav-buttons internal">
+            <button id="back-from-3" class="btn-secondary">Back</button>
+            <button id="deploy-btn" class="btn-action flex-2">Confirm Deployment</button>
+          </div>
+
+          <div id="success-message" class="hidden-success">
+            <div class="card success-accent">
+              <p class="info-text"><strong>Status:</strong> Active<br>Your script is synchronizing. You may now open the dashboard.</p>
+            </div>
+            <button id="btn-done" class="btn-secondary full-width">Open Dashboard</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="page-dashboard" class="setup-page" style="display: none;">
+        <div class="status-header">
+          <button id="btn-open-script" class="help-link">View Generated Script ↗</button>
+        </div>
+
+        <div class="status-grid-compact">
+          <div class="status-item">
+            <span class="status-dot offline" id="token-status-dot"></span>
+            <div class="status-info">
+              <label>DRIVE</label>
+              <span id="token-status-text">Checking...</span>
+            </div>
+          </div>
+          <div class="status-item">
+            <span class="status-dot offline" id="skport-status-dot"></span>
+            <div class="status-info">
+              <label>SKPORT</label>
+              <span id="sync-status-indicator">Checking...</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-grid">
+          <button id="btn-redeploy" class="btn-secondary">Settings</button>
+          <button id="btn-run-test" class="btn-secondary">Auto-claim Once</button>
+        </div>
+
+        <div class="automation-card-integrated">
+          <h3>Daily Automation</h3>
+          <div class="time-row">
+            <div class="time-input-group">
+              <input type="time" id="claim-time" value="18:00" />
+              <small>24-hour Format</small>
+            </div>
+            <button id="btn-save-automation" class="btn-action">Enable</button>
+          </div>
+          <p id="automation-status" class="status-text"></p>
+        </div>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+    <script src="popup.skport.js"></script>
+    <script src="popup.discord.js"></script>
+  </body>
+</html>

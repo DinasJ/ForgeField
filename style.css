@@ -1,0 +1,575 @@
+/* --- 1. FONTS & RESET --- */
+@font-face {
+    font-family: 'HarmonyOS Sans';
+    src: url('fonts/HarmonyOS-Sans-Regular.ttf') format('truetype');
+    font-weight: 400;
+}
+@font-face {
+    font-family: 'HarmonyOS Sans';
+    src: url('fonts/HarmonyOS-Sans-Bold.ttf') format('truetype');
+    font-weight: 700;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 330px;
+    height: 480px;
+    background-color: #0c0c0c;
+    color: #ffffff;
+    font-family: 'HarmonyOS Sans', -apple-system, sans-serif;
+    overflow: hidden;
+}
+
+body {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- 2. HEADER & PROGRESS --- */
+.header {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo { width: 40px; }
+
+h1 {
+    font-size: 1.1rem; /* Slightly reduced for better fit */
+    letter-spacing: 2px;
+    font-weight: 700;
+}
+
+/* --- 3. LAYOUT & PAGES --- */
+.container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+}
+
+.setup-page {
+    display: flex;
+    flex-direction: column;
+    height: 410px; /* Adjusted to prevent body overflow */
+    padding: 10px 0; /* Vertical only, card handles horizontal */
+    width: 100%;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.card.setup-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 20px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex: 1 1 auto; /* Allows card to expand */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* --- 4. INPUTS --- */
+input[type="text"], input[type="time"] {
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="text"] {
+    width: 100%;
+    height: 38px;
+    padding: 8px 12px;
+    background: #000;
+    border: 1px solid #333;
+    color: #fffa00;
+    font-family: monospace;
+    font-size: 13px;
+    outline: none;
+    border-radius: 2px;
+}
+
+input[type="text"]:focus {
+    border-color: #fffa00;
+    box-shadow: 0 0 8px rgba(255, 250, 0, 0.2);
+}
+
+.input-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 6px;
+    width: 100%;
+}
+
+/* --- 5. BUTTONS --- */
+button {
+    font-family: 'HarmonyOS Sans', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 4px;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+button:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(255, 250, 0, 0.25);
+}
+
+button:focus {
+    outline: 2px solid #fffa00;
+    outline-offset: 2px;
+}
+
+.btn-action {
+    background: #fffa00;
+    color: #000;
+    padding: 12px;
+}
+
+.btn-action:not(:disabled):hover {
+    background: #ffff40;
+}
+
+.btn-secondary {
+    background: #333;
+    color: #fff;
+    padding: 12px;
+}
+
+.btn-secondary:not(:disabled):hover {
+    background: #444;
+}
+
+.btn-discord {
+    background: #5865F2;
+    color: #fff;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 200px;
+    min-height: 44px;
+}
+
+.btn-discord:not(:disabled):hover {
+    background: #4752c4;
+}
+
+.btn-discord:focus {
+    outline: 2px solid #5865F2;
+    outline-offset: 2px;
+}
+
+.discord-icon {
+    width: 18px !important;
+    height: 18px !important;
+    flex-shrink: 0;
+    margin-right: 8px;
+    display: inline-block;
+}
+
+/* Pulse animation for autofilled inputs */
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 250, 0, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(255, 250, 0, 0); }
+}
+
+.pulse-once {
+    animation: pulse 0.6s ease-out 1;
+}
+
+.btn-google {
+    background: #ffffff;
+    color: #1f1f1f;
+    border: 1px solid #dadce0;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 200px;
+    min-height: 44px;
+}
+
+.btn-google:not(:disabled):hover {
+    background: #f8f9fa;
+}
+
+#google-auth-btn:disabled {
+    opacity: 0.5;
+    filter: none;
+    cursor: not-allowed;
+    background: #ffffff;
+    color: #1f1f1f;
+}
+
+.google-icon {
+    width: 18px !important;
+    height: 18px !important;
+    flex-shrink: 0;
+    margin-right: 8px; /* space from text */
+    display: inline-block; /* ensure margin works */
+}
+
+/* new class allowing custom sizing while preserving aspect ratio */
+.google-icon-2025 {
+    width: 20px;
+    height: auto;          /* maintain original aspect ratio */
+    display: inline-block; /* ensure it respects width/height */
+    position: relative;    /* allow offsetting */
+    left: 0;               /* may be adjusted for debug */
+    z-index: 999;          /* stay on top */
+    outline: 1px solid red; /* visualize bounds */
+}
+
+/* Consolidated State Logic */
+button:disabled, 
+button.status-checking {
+    opacity: 0.4;
+    filter: grayscale(1);
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Success/Active Glow state */
+.btn-active {
+    background-color: #fffa00 !important;
+    color: #000 !important;
+    box-shadow: 0 0 15px rgba(255, 250, 0, 0.4);
+}
+
+/* Dimmed state for used controls */
+.dimmed {
+    opacity: 0.15 !important;
+    filter: grayscale(1);
+    pointer-events: none;
+}
+
+/* Dimmed button state (for SKPort and other buttons when in "done" state) */
+.dimmed-button,
+.btn-discord:disabled {
+    opacity: 0.5 !important;
+    filter: none !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+/* --- 6. NAVIGATION & TOGGLE --- */
+.nav-buttons {
+    margin-top: auto;
+    padding: 15px 0 5px;
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.nav-buttons button { flex: 1; }
+
+.switch {
+    position: relative;
+    display: inline-block;
+    margin: 0px 0px 15px 15px;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: #333;
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px; width: 18px;
+    left: 3px; bottom: 3px;
+    background-color: #000;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider { background-color: #fffa00; }
+input:checked + .slider:before { transform: translateX(20px); }
+
+/* --- 10. STATUS DOTS & ANIMATIONS --- */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot.online { 
+    background-color: #00ff00; 
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.6); 
+    animation: status-pulse 2s infinite; 
+}
+
+.status-dot.offline { 
+    background-color: #ffa500; 
+    box-shadow: 0 0 5px rgba(255, 165, 0, 0.4); 
+}
+
+@keyframes status-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* --- 11. DASHBOARD GRIDS --- */
+.status-grid-compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #161616;
+    border: 1px solid #333;
+    padding: 10px;
+    border-radius: 4px;
+    gap: 10px;
+    width: 100%;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-info label {
+    display: block;
+    font-size: 9px;
+    color: #888;
+    font-weight: 700;
+}
+
+.status-info span {
+    font-size: 11px;
+    color: #eee;
+}
+
+/* --- 12. AUTOMATION & TIME INPUTS --- */
+.automation-card-integrated {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 12px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.automation-card-integrated h3 {
+    margin-bottom: 4px;
+}
+
+.time-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+input[type="time"] {
+    width: 100%;
+    height: 34px;
+    padding: 8px;
+    background: #000;
+    border: 1px solid #333;
+    color: #fffa00;
+    font-family: monospace;
+    font-size: 16px;
+    outline: none;
+    border-radius: 4px;
+}
+
+input[type="time"]:focus {
+    border-color: #fffa00;
+    box-shadow: 0 0 8px rgba(255, 250, 0, 0.2);
+}
+
+.time-input-group small {
+    font-size: 8px;
+    color: #555;
+    display: block;
+    margin-top: 2px;
+}
+
+/* --- 13. ACTION GRID & UTILITY BUTTONS --- */
+.action-grid {
+    display: flex;
+    gap: 10px;
+    margin: 5px 0;
+}
+
+.action-grid button {
+    flex: 1;
+    padding: 8px 5px;
+    font-size: 11px;
+}
+
+.btn-danger-text {
+    background: none;
+    border: none;
+    color: #ff4444;
+    font-size: 10px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 8px 0;
+    text-align: center;
+    letter-spacing: 1px;
+    width: 100%;
+}
+
+/* --- 14. INFO BOXES (The 'Wide' Look) --- */
+.info-box {
+    width: 100%;
+    margin-top: 15px;
+    padding: 12px;
+    background: rgba(255, 250, 0, 0.04);
+    border: 1px solid rgba(255, 250, 0, 0.1);
+    border-radius: 4px;
+    display: flex;
+    gap: 10px;
+    text-align: left;
+}
+
+.info-text {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #bbb;
+}
+
+/* --- 15. PROGRESS BAR --- */
+.progress-container { 
+    margin-bottom: 15px; 
+    width: 100%;
+}
+
+.progress-bar-bg { 
+    width: 100%; 
+    height: 6px;
+    background: #111; 
+    border: 1px solid #222;
+    border-radius: 10px; 
+    overflow: hidden;
+}
+
+.progress-fill { 
+    width: 0%; 
+    height: 100%; 
+    background: #fffa00; 
+    box-shadow: 0 0 10px rgba(255, 250, 0, 0.3);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); 
+}
+/* --- INTERNAL CARD LAYOUT --- */
+.card.setup-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.nav-buttons.internal {
+    margin-top: auto; /* This pushes the buttons to the bottom of the card */
+    width: 100%;
+    display: flex;
+    gap: 10px;
+    padding-top: 15px;
+}
+
+.centered-control-row {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.wide-link {
+    display: inline-block;
+    width: auto;
+    min-width: 200px;
+    text-decoration: none;
+    text-align: center;
+}
+
+/* --- UTILITY CLASSES --- */
+.value-orange { color: #ffa500; font-weight: bold; }
+.value-green { color: #00ff00; font-weight: bold; }
+.hidden-status { display: none; margin-top: 10px; text-align: center; }
+.error-text { 
+    display: none; 
+    color: #ff4444; 
+    font-size: 10px; 
+    margin-top: 5px; 
+    font-weight: bold;
+    background: rgba(255, 68, 68, 0.1);
+    padding: 6px 8px;
+    border-left: 2px solid #ff4444;
+    border-radius: 2px;
+}
+.flex-2 { flex: 2 !important; }
+.full-width { width: 100%; }
+.big-check { font-size: 32px; margin: 15px 0; }
+.success-accent { text-align: left; border-left: 3px solid #fffa00; background: rgba(255, 255, 255, 0.05); padding: 10px; margin-bottom: 20px; }
+
+/* --- SECTION LABELS & TYPOGRAPHY --- */
+.section-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #aaa;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
+/* --- SEPARATOR WITH TEXT --- */
+.separator-with-text {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 15px 0;
+    width: 100%;
+}
+
+.separator-line {
+    flex: 1;
+    height: 1px;
+    background-color: #333;
+}
+
+.separator-text {
+    white-space: nowrap;
+    color: #888;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* --- LINKS --- */
+a {
+    color: #fffa00;
+    text-decoration: none;
+    border-bottom: 1px solid #fffa00;
+    transition: opacity 0.2s;
+}
+
+a:hover {
+    opacity: 0.7;
+}
+
+a:focus {
+    outline: 2px solid #fffa00;
+    outline-offset: 2px;
+}
