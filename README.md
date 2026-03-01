@@ -67,10 +67,10 @@ Minimum versions: Chrome/Edge 88+, Firefox 109+.
 
 Click the ForgeField icon in your browser toolbar to open the popup.
 
-### 2. Connect SKPORT / Endfield
+### 2. Connect SKPORT
 
-- If you’re not already signed in, use the extension’s link to open the [Endfield sign-in page](https://game.skport.com/endfield/sign-in).
-- Sign in there, then return to the extension. With an Endfield tab open (or after a recent sign-in), the extension can read your session and show **Connected**.
+- If you’re not already signed in, use the extension’s link to open the [SKPORT sign-in page](https://game.skport.com/endfield/sign-in).
+- Sign in there, then return to the extension. With an SKPORT tab open (or after a recent sign-in), the extension can read your session and show **Connected**.
 - The extension uses cookies and in-page storage from `*.skport.com` only to show connection status and sync your game role; it does not send this data elsewhere.
 
 ### 3. Link Google
@@ -120,7 +120,7 @@ The extension requests only the permissions it needs:
 
 - **Identity** — Google and Discord OAuth sign-in.
 - **Storage** — Save linked accounts, preferences, and deployment state locally.
-- **Cookies** — Read SKPORT session cookie to show Endfield connection status.
+- **Cookies** — Read SKPORT session cookie to show SKPORT connection status.
 - **Scripting / Tabs / Active tab** — Read game role from an open SKPORT tab and open sign-in/script/access pages when you click buttons.
 
 Data is stored **only in your browser**. We do not collect or store your data on our own servers. For details, see [PRIVACY.md](PRIVACY.md). For short justification of each permission, see [PERMISSIONS.md](PERMISSIONS.md).
