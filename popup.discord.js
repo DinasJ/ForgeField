@@ -6,13 +6,12 @@ const validateDiscordId = (manualVal = null) => {
   const idField = document.getElementById("discordId");
   const authBtn = document.getElementById("discord-auth-btn");
   const btnText = document.getElementById("discord-auth-btn-text");
-  const switchWrapper = document.getElementById("discord-switch-wrapper");
+  const signedInUsername = document.getElementById("discord-signed-in-username");
 
   const id = manualVal !== null ? manualVal : idField ? idField.value.trim() : "";
 
   if (manualVal !== null && idField && idField.value !== manualVal) {
     idField.value = manualVal;
-    // Add pulse animation when autofilled
     idField.classList.add("pulse-once");
     setTimeout(() => idField.classList.remove("pulse-once"), 600);
   }
@@ -21,28 +20,30 @@ const validateDiscordId = (manualVal = null) => {
 
   if (nextBtn2) {
     nextBtn2.disabled = !isValid;
-    nextBtn2.className = isValid ? "btn-action" : "btn-secondary";
+    nextBtn2.className = isValid ? "btn-dashboard-primary setup-footer-primary" : "btn-dashboard-secondary";
   }
 
-  // Dim the Discord button if ID is already filled
-  if (authBtn) {
-    if (isValid) {
-      authBtn.disabled = true;
-      authBtn.classList.add("dimmed-button");
-      // Get the username if available
-      chrome.storage.local.get(["discordUsername"], (data) => {
-        if (btnText) {
-          btnText.innerText = data.discordUsername ? `Connected: ${data.discordUsername}` : "Connected";
-        }
-        if (switchWrapper) switchWrapper.style.display = "block";
-      });
-    } else {
-      authBtn.disabled = false;
-      authBtn.classList.remove("dimmed-button");
-      if (btnText) btnText.innerText = "Connect with Discord";
-      if (switchWrapper) switchWrapper.style.display = "none";
+  chrome.storage.local.get(["discordUsername", "discordAvatarUrl", "discordToken"], (data) => {
+    const isSignedIn = !!data.discordUsername;
+    const connectedBlock = document.getElementById("discord-connected-block");
+    const connectWrap = document.getElementById("discord-connect-wrap");
+    const editLink = document.getElementById("edit-manually-link");
+    const avatarEl = document.getElementById("discord-avatar");
+    if (connectedBlock) connectedBlock.classList.toggle("hidden", !isSignedIn);
+    if (connectWrap) connectWrap.classList.toggle("hidden", isSignedIn);
+    if (editLink) editLink.classList.toggle("hidden", isSignedIn);
+    if (signedInUsername) signedInUsername.textContent = data.discordUsername || "";
+    if (avatarEl) {
+      const defaultAvatar = "https://cdn.discordapp.com/embed/avatars/0.png";
+      avatarEl.src = isSignedIn ? (data.discordAvatarUrl || defaultAvatar) : "";
+      avatarEl.alt = data.discordUsername ? `${data.discordUsername} avatar` : "";
     }
-  }
+    if (btnText) btnText.textContent = "Connect with Discord";
+    // If connected but avatar URL missing, fetch profile so we get the real avatar
+    if (isSignedIn && !data.discordAvatarUrl && data.discordToken) {
+      chrome.runtime.sendMessage({ action: "REFRESH_DISCORD_PROFILE" }, () => {});
+    }
+  });
 };
 
 const validateWebhook = (manualVal = null) => {
@@ -54,32 +55,21 @@ const validateWebhook = (manualVal = null) => {
 
   if (nextBtn2) {
     nextBtn2.disabled = !isValid;
-    nextBtn2.className = isValid ? "btn-action" : "btn-secondary";
+    nextBtn2.className = isValid ? "btn-dashboard-primary setup-footer-primary" : "btn-dashboard-secondary";
   }
 };
 
 const handleDiscordSignOut = (e) => {
   if (e) e.preventDefault();
-  chrome.storage.local.remove(["discordId", "discordUsername", "discordToken"], () => {
+  chrome.storage.local.remove(["discordId", "discordUsername", "discordToken", "discordAvatarUrl"], () => {
     const idField = document.getElementById("discordId");
     if (idField) idField.value = "";
-    const btnText = document.getElementById("discord-auth-btn-text");
-    if (btnText) btnText.innerText = "Connect with Discord";
-    if (typeof updatePage2SubView === "function") updatePage2SubView();
-    if (typeof validateDiscordId === "function") validateDiscordId("");
-  });
-};
-
-const handleDiscordSwitch = (e) => {
-  if (e) e.preventDefault();
-  chrome.storage.local.remove(["discordId", "discordUsername", "discordToken"], () => {
-    const idField = document.getElementById("discordId");
-    if (idField) {
-      idField.value = "";
-      idField.focus();
-    }
-    const btnText = document.getElementById("discord-auth-btn-text");
-    if (btnText) btnText.innerText = "Connect with Discord";
+    const manualWrap = document.getElementById("discord-manual-wrap");
+    const editLink = document.getElementById("edit-manually-link");
+    const hideLink = document.getElementById("hide-manual-link");
+    if (manualWrap) manualWrap.classList.add("hidden");
+    if (editLink) { editLink.classList.remove("hidden"); editLink.textContent = "Use User ID Instead"; }
+    if (hideLink) hideLink.classList.add("hidden");
     if (typeof updatePage2SubView === "function") updatePage2SubView();
     if (typeof validateDiscordId === "function") validateDiscordId("");
   });
@@ -89,97 +79,88 @@ const updatePage2SubView = () => {
   const toggleEl = document.getElementById("discord-toggle");
   const isNotifyEnabled = toggleEl ? toggleEl.checked : false;
   const nextBtn2 = document.getElementById("next-from-2");
-  const partId = document.getElementById("discord-part-id");
+  const idStepContent = document.getElementById("discord-id-step-content");
   const partWebhook = document.getElementById("discord-part-webhook");
+  const idInput = document.getElementById("discordId");
 
   chrome.storage.local.get(["discordId", "webhookUrl", "accountNickname", "discordUsername"], (data) => {
     if (!isNotifyEnabled) {
-      if (partId) partId.style.display = "none";
+      if (idStepContent) idStepContent.style.display = "";
       if (partWebhook) partWebhook.style.display = "none";
       if (nextBtn2) {
         nextBtn2.disabled = false;
-        nextBtn2.className = "btn-action";
-        nextBtn2.innerText = "NEXT";
+        nextBtn2.className = "btn-dashboard-primary setup-footer-primary";
+        nextBtn2.innerText = "Next";
       }
       return;
     }
 
     if (page2SubStep === "ID") {
-      if (partId) partId.style.display = "block";
+      if (idStepContent) idStepContent.style.display = "";
       if (partWebhook) partWebhook.style.display = "none";
-      
-      // Auto-fill and Disable logic
-      const idInput = document.getElementById("discordId");
       if (idInput) {
-        if (data.discordUsername) {
-          // If connected, show the ID and disable the field
-          idInput.value = data.discordId || "";
-          idInput.disabled = true;
-          idInput.style.opacity = "0.5";
-          idInput.style.cursor = "not-allowed";
-        } else {
-          // If not connected, clear the field and enable it
-          idInput.value = "";
-          idInput.disabled = false;
-          idInput.style.opacity = "1";
-          idInput.style.cursor = "text";
-        }
+        if (data.discordId) idInput.value = data.discordId;
+        idInput.disabled = !!data.discordUsername;
+        idInput.style.opacity = data.discordUsername ? "0.6" : "1";
+        idInput.style.cursor = data.discordUsername ? "not-allowed" : "text";
       }
-
-      validateDiscordId(data.discordId || "");
-      if (nextBtn2) nextBtn2.innerText = "NEXT";
+      validateDiscordId();
+      if (nextBtn2) nextBtn2.innerText = "Next";
     } else {
-      if (partId) partId.style.display = "none";
+      if (idStepContent) idStepContent.style.display = "none";
       if (partWebhook) partWebhook.style.display = "block";
-      validateWebhook(data.webhookUrl || "");
+      validateWebhook();
       const nicknameField = document.getElementById("accountNickname");
       if (nicknameField) nicknameField.value = data.accountNickname || "";
-      if (nextBtn2) nextBtn2.innerText = "NEXT";
+      if (nextBtn2) nextBtn2.innerText = "Next";
     }
   });
 };
 
 // Wire UI actions specific to the Discord subflow
 document.addEventListener("DOMContentLoaded", () => {
-  const saveWebhookBtn = document.getElementById("save-webhook-btn");
-  if (saveWebhookBtn) {
-    saveWebhookBtn.onclick = () => {
-      const webhookField = document.getElementById("webhook");
-      const val = webhookField ? webhookField.value.trim() : "";
-      if (!val) {
-        alert("Please enter a webhook URL.");
-        return;
-      }
-      const nicknameField = document.getElementById("accountNickname");
-      const nickname = nicknameField ? nicknameField.value.trim() : "";
-      
-      chrome.storage.local.set({ 
-        webhookUrl: val, 
-        notifyEnabled: true,
-        accountNickname: nickname || undefined
-      }, () => {
-        validateWebhook(val);
-        if (typeof updatePage2SubView === "function") updatePage2SubView();
-        if (typeof updateSummaryBox === "function") updateSummaryBox();
-        updateProgressBar(null, val);
-        alert("Webhook saved.");
-      });
-    };
-  }
-
-  const discordSignout = document.getElementById("discord-signout-link");
-  if (discordSignout) {
-    discordSignout.addEventListener("click", (e) => {
+  const disconnectBtn = document.getElementById("discord-disconnect-btn");
+  if (disconnectBtn) {
+    disconnectBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      handleDiscordSignOut(e);
+      if (confirm("Sign out from Discord?")) handleDiscordSignOut(e);
     });
   }
 
-  const discordSwitch = document.getElementById("discord-switch-btn");
-  if (discordSwitch) {
-    discordSwitch.addEventListener("click", (e) => {
+  const editManuallyLink = document.getElementById("edit-manually-link");
+  const hideManualLink = document.getElementById("hide-manual-link");
+  const manualWrap = document.getElementById("discord-manual-wrap");
+  const setManualWrapVisible = (visible) => {
+    if (!manualWrap) return;
+    manualWrap.classList.toggle("hidden", !visible);
+    if (editManuallyLink) editManuallyLink.classList.toggle("hidden", visible);
+    if (hideManualLink) hideManualLink.classList.toggle("hidden", !visible);
+  };
+  if (editManuallyLink && manualWrap) {
+    editManuallyLink.addEventListener("click", (e) => {
       e.preventDefault();
-      handleDiscordSwitch(e);
+      setManualWrapVisible(true);
     });
+  }
+  if (hideManualLink && manualWrap) {
+    hideManualLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      setManualWrapVisible(false);
+    });
+  }
+
+  const discordIdField = document.getElementById("discordId");
+  if (discordIdField) {
+    discordIdField.addEventListener("input", () => {
+      validateDiscordId();
+      const val = discordIdField.value.trim();
+      if (/^\d{17,20}$/.test(val)) chrome.storage.local.set({ discordId: val });
+    });
+  }
+
+  const webhookField = document.getElementById("webhook");
+  if (webhookField) {
+    webhookField.addEventListener("input", () => validateWebhook());
+    webhookField.addEventListener("paste", () => setTimeout(() => validateWebhook(), 0));
   }
 });

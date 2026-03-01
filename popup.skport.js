@@ -40,52 +40,82 @@ const syncGameSession = async () => {
 
   function updateSyncUI(isLive, isDriveValid) {
     if (typeof toggleDashboardControls === "function") {
-      toggleDashboardControls(isDriveValid, isLive);
+      chrome.storage.local.get(["webAppUrl", "googleWebAppAuthorized"], (webData) => {
+        toggleDashboardControls(isDriveValid, isLive, !!webData.webAppUrl, !!webData.googleWebAppAuthorized);
+      });
     }
 
-    if (isLive) {
-      if (statusText) { statusText.innerText = "Connected"; statusText.style.color = "#00ff00"; }
-      if (loginBtn) {
-        loginBtn.innerText = "✓ SKPORT Connected";
-        loginBtn.disabled = true;
-        loginBtn.classList.add("dimmed-button");
-      }
-      if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.style.opacity = "1";
-        nextBtn.classList.add("btn-active");
-      }
-    } else {
-      if (statusText) { statusText.innerText = "Disconnected"; statusText.style.color = "#ffa500"; }
-      if (loginBtn) {
-        loginBtn.innerText = "Open SKPort Sign-in";
-        loginBtn.disabled = false;
-        loginBtn.classList.remove("dimmed-button");
-      }
-      if (nextBtn) {
-        nextBtn.disabled = true;
-        nextBtn.style.opacity = "0.3";
-        nextBtn.classList.remove("btn-active");
-      }
+    const statusLabel = isLive ? "Connected" : "Disconnected";
+    const statusColor = isLive ? "#22c55e" : "#ffa500";
+
+    if (statusText) { statusText.innerText = statusLabel; statusText.style.color = statusColor; }
+    if (loginBtn) {
+      const textEl = loginBtn.querySelector(".skport-btn-text");
+      if (textEl) textEl.textContent = isLive ? "✓ SKPORT Connected" : "Open SKPORT Sign-in";
+      loginBtn.disabled = !!isLive;
+      loginBtn.classList.toggle("dimmed-button", isLive);
+      loginBtn.classList.toggle("skport-connected", isLive);
+    }
+    if (nextBtn) {
+      nextBtn.disabled = !isLive;
+      nextBtn.style.opacity = isLive ? "1" : "0.3";
+      nextBtn.classList.toggle("btn-active", isLive);
+    }
+
+    // Page 1: SKPORT status pill
+    const page1Stat = document.getElementById("page1-stat-skport-name");
+    if (page1Stat) {
+      page1Stat.innerText = statusLabel;
+      page1Stat.setAttribute("data-state", isLive ? "success" : "warning");
+    }
+
+    // Summary page (Page 3): same stat so it stays in sync (status-pill)
+    const summaryStat = document.getElementById("stat-skport-name");
+    if (summaryStat) {
+      summaryStat.innerText = statusLabel;
+      summaryStat.setAttribute("data-state", isLive ? "success" : "warning");
+    }
+
+    // Dashboard: SKPORT pill badge
+    const dashStat = document.getElementById("dashboard-stat-skport-name");
+    if (dashStat) {
+      dashStat.innerText = statusLabel;
+      dashStat.setAttribute("data-state", isLive ? "success" : "warning");
     }
   }
 };
 
 const updateSKPortLinkUI = () => {
-  chrome.storage.local.get(["cred"], (data) => {
-    const skportLoginBtn = document.getElementById("btn-skport-login");
-    const isLive = !!data.cred && data.cred !== "PENDING";
+  chrome.storage.local.get(["cred", "skGameRole"], (data) => {
+    const isLive = !!data.cred && data.cred !== "PENDING" && !!(data.skGameRole && data.skGameRole.length > 5);
+    const statusLabel = isLive ? "Connected" : "Disconnected";
+    const statusColor = isLive ? "#22c55e" : "#ffa500";
 
+    const skportLoginBtn = document.getElementById("btn-skport-login");
     if (skportLoginBtn) {
-      if (isLive) {
-        skportLoginBtn.innerText = "✓ SKPORT Connected";
-        skportLoginBtn.disabled = true;
-        skportLoginBtn.classList.add("dimmed-button");
-      } else {
-        skportLoginBtn.innerText = "Open SKPort Sign-in";
-        skportLoginBtn.disabled = false;
-        skportLoginBtn.classList.remove("dimmed-button");
-      }
+      const textEl = skportLoginBtn.querySelector(".skport-btn-text");
+      if (textEl) textEl.textContent = isLive ? "✓ SKPORT Connected" : "Open SKPORT Sign-in";
+      skportLoginBtn.disabled = !!isLive;
+      skportLoginBtn.classList.toggle("dimmed-button", isLive);
+      skportLoginBtn.classList.toggle("skport-connected", isLive);
+    }
+
+    const page1Stat = document.getElementById("page1-stat-skport-name");
+    if (page1Stat) {
+      page1Stat.innerText = statusLabel;
+      page1Stat.setAttribute("data-state", isLive ? "success" : "warning");
+    }
+
+    const summaryStat = document.getElementById("stat-skport-name");
+    if (summaryStat) {
+      summaryStat.innerText = statusLabel;
+      summaryStat.setAttribute("data-state", isLive ? "success" : "warning");
+    }
+
+    const dashStat = document.getElementById("dashboard-stat-skport-name");
+    if (dashStat) {
+      dashStat.innerText = statusLabel;
+      dashStat.setAttribute("data-state", isLive ? "success" : "warning");
     }
   });
 };
@@ -125,5 +155,7 @@ const checkCredentials = () => {
   });
 };
 
-// Periodic UI refresh for SKPort link state
+// Periodic re-check of SKPORT connection (tab + cookie) and UI refresh on page 1 + summary
+setInterval(syncGameSession, 4000);
+// Also refresh button state from storage every 2s when popup is open
 setInterval(updateSKPortLinkUI, 2000);

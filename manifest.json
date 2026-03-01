@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Endfield Forge",
-  "version": "1.0",
+  "name": "ForgeField",
+  "version": "1.0.0",
+  "description": "Connect Endfield (SKPort) with Google Apps Script and Discord for automation and notifications.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzfGGD02ZSso9D9cthjOyhLZ2VJlIWSByel0AfAcL6RM8I/cc4OZQzXjF5h9G0HKaJezEPsY9SUO00gwZrVexXvuqm4jMkOUGeuor63+rIPKpR2vN78jdd0TfbCKtZ7x8OMtMyIQ5ebjp24ZZ89DiVHgQELvZ3eaU247Te8GTWQayzqmnBv/GZp8QxhK4CAiVX4vU9rdcNyjyk+IAnPOpmw/IVAMfgOjS6W6M4StM424i2zMHNvcy7/+p+0+7UdGPCw/ySMn4mIPd67/FpG7MAYk9VhnvIgTQLdGijkH/La9rn9+ryAsMvMVKzZePZQq+iUSVX0Qeh5dVLaiiLwqMfQIDAQAB",
   "icons": {
     "16": "icons/icon16.png",
@@ -9,7 +10,6 @@
     "128": "icons/icon128.png"
   },
 "background": {
-  "scripts": ["background.js"],
   "service_worker": "background.js",
   "type": "module"
 },
@@ -64,7 +64,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "endfield-forge@assistant",
+      "id": "Forge@Field",
       "strict_min_version": "109.0"
     }
   }
