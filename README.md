@@ -1,6 +1,6 @@
 # ForgeField
 
-**Connect Endfield (SKPort) with Google Apps Script and Discord for automation and notifications.**
+**Connect Endfield (SKPORT) with Google Apps Script and Discord for automation and notifications.**
 
 ForgeField is a browser extension that links your [SKPORT](https://game.skport.com/endfield/sign-in) session to a Google Apps Script web app and optional Discord webhooks. Use it to trigger in-game claim automation, schedule daily claim reminders, and get Discord notifications—all without sharing your account credentials with third-party servers.
 
@@ -10,7 +10,7 @@ ForgeField is a browser extension that links your [SKPORT](https://game.skport.c
 
 ## Features
 
-- **SKPort / Endfield connection** — Detects when you’re signed in to the SKPORT website and shows connection status in the extension. Syncs your role from an open SKPort tab so the extension knows which account is active.
+- **SKPORT connection** — Detects when you’re signed in to the SKPORT website and shows connection status in the extension. Syncs your role from an open SKPORT tab so the extension knows which account is active.
 - **Google account linking** — Sign in with Google to create and manage an Apps Script project. The extension deploys a small web app that runs your automation (e.g. claim triggers) and can be called from the extension or on a schedule.
 - **Discord account linking** — Connect your Discord account so the extension can display your username and avatar. Optionally add a Discord webhook URL to send claim reminders or other notifications to a channel you choose.
 - **One-click deployment** — The extension generates the Apps Script code and deploys it as a web app for you. You can open the script in the Google Apps Script editor anytime to view or edit it.
@@ -67,7 +67,7 @@ Minimum versions: Chrome/Edge 88+, Firefox 109+.
 
 Click the ForgeField icon in your browser toolbar to open the popup.
 
-### 2. Connect SKPort / Endfield
+### 2. Connect SKPORT / Endfield
 
 - If you’re not already signed in, use the extension’s link to open the [Endfield sign-in page](https://game.skport.com/endfield/sign-in).
 - Sign in there, then return to the extension. With an Endfield tab open (or after a recent sign-in), the extension can read your session and show **Connected**.
@@ -97,11 +97,11 @@ Click the ForgeField icon in your browser toolbar to open the popup.
 ```
 ForgeField/
 ├── manifest.json       # Extension manifest (MV3)
-├── background.js       # Service worker: OAuth, messaging, SKPort cookie watcher
+├── background.js       # Service worker: OAuth, messaging, SKPORT cookie watcher
 ├── popup.html          # Popup UI structure
 ├── popup.js            # Popup logic, lifecycle, dashboard, deployment
 ├── popup.discord.js    # Discord UI and auth flow
-├── popup.skport.js     # SKPort / Google setup and status
+├── popup.skport.js     # SKPORT / Google setup and status
 ├── style.css           # Styles and fonts
 ├── icons/              # Extension icons (16, 32, 48, 128)
 ├── fonts/              # HarmonyOS Sans (optional, for UI)
@@ -120,8 +120,8 @@ The extension requests only the permissions it needs:
 
 - **Identity** — Google and Discord OAuth sign-in.
 - **Storage** — Save linked accounts, preferences, and deployment state locally.
-- **Cookies** — Read SKPort session cookie to show Endfield connection status.
-- **Scripting / Tabs / Active tab** — Read game role from an open SKPort tab and open sign-in/script/access pages when you click buttons.
+- **Cookies** — Read SKPORT session cookie to show Endfield connection status.
+- **Scripting / Tabs / Active tab** — Read game role from an open SKPORT tab and open sign-in/script/access pages when you click buttons.
 
 Data is stored **only in your browser**. We do not collect or store your data on our own servers. For details, see [PRIVACY.md](PRIVACY.md). For short justification of each permission, see [PERMISSIONS.md](PERMISSIONS.md).
 
