@@ -2,7 +2,7 @@
 
 **Connect Endfield (SKPort) with Google Apps Script and Discord for automation and notifications.**
 
-ForgeField is a browser extension that links your [Endfield](https://game.skport.com/endfield/sign-in) game session (via SKPort) to a Google Apps Script web app and optional Discord webhooks. Use it to trigger in-game claim automation, schedule daily claim reminders, and get Discord notifications—all without sharing your account credentials with third-party servers.
+ForgeField is a browser extension that links your [SKPORT](https://game.skport.com/endfield/sign-in) session to a Google Apps Script web app and optional Discord webhooks. Use it to trigger in-game claim automation, schedule daily claim reminders, and get Discord notifications—all without sharing your account credentials with third-party servers.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
