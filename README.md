@@ -10,7 +10,7 @@ ForgeField is a browser extension that links your [Endfield](https://game.skport
 
 ## Features
 
-- **SKPort / Endfield connection** — Detects when you’re signed in to the game and shows connection status in the extension. Syncs your game role from an open SKPort tab so the extension knows which account is active.
+- **SKPort / Endfield connection** — Detects when you’re signed in to the SKPORT website and shows connection status in the extension. Syncs your role from an open SKPort tab so the extension knows which account is active.
 - **Google account linking** — Sign in with Google to create and manage an Apps Script project. The extension deploys a small web app that runs your automation (e.g. claim triggers) and can be called from the extension or on a schedule.
 - **Discord account linking** — Connect your Discord account so the extension can display your username and avatar. Optionally add a Discord webhook URL to send claim reminders or other notifications to a channel you choose.
 - **One-click deployment** — The extension generates the Apps Script code and deploys it as a web app for you. You can open the script in the Google Apps Script editor anytime to view or edit it.
