@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="logo-dark.svg"/>
-    <img src="logo-light.svg" alt="ForgeField" width="320"/>
-  </picture>
+  <img src="logo-light.svg" alt="ForgeField" width="320"/>
 </p>
 
 # ForgeField
