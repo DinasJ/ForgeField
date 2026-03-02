@@ -101,7 +101,6 @@ async function startGoogleAuth() {
   const scopes = [
     "https://www.googleapis.com/auth/script.projects",
     "https://www.googleapis.com/auth/script.deployments",
-    "https://www.googleapis.com/auth/script.processes",
     "https://www.googleapis.com/auth/script.external_request",
     "https://www.googleapis.com/auth/drive.metadata.readonly",
     "https://www.googleapis.com/auth/drive.file",

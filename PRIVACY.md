@@ -6,7 +6,7 @@ ForgeField ("the extension") is a browser extension that connects your SKPORT se
 
 ## Data we collect and use
 
-- **Google account:** When you connect Google, we use OAuth to obtain access tokens. We use these only to create and update Apps Script projects and deployments, and to read/write Drive files you explicitly link. We do not access your email, calendar, or other Google data beyond the scopes you approve.
+- **Google account:** When you connect Google, we use OAuth to obtain access tokens. We request only the scopes needed for the extension: creating and updating Apps Script projects and deployments, allowing the deployed script to make outbound requests (e.g. to SKPORT and Discord), and reading/writing Drive files for the script project. We do not request or use `script.processes` (viewing or managing running script executions). We do not access your email, calendar, or other Google data beyond the scopes you approve.
 - **Discord account:** When you connect Discord, we use OAuth to obtain an access token and to fetch your Discord user id and username (and optionally avatar) for display in the extension. We do not access your servers, messages, or other Discord data beyond the "identify" scope.
 - **SKPORT:** The extension reads your game session from the SKPORT website (via cookies and in-page storage) when you have the site open, so it can show connection status and optionally trigger automation. We do not send this data to any server we control.
 - **Webhook URL and preferences:** If you optionally set a Discord webhook URL or nickname, these are stored locally in your browser and used only to send notifications you configure (e.g. claim reminders). We do not collect or store these on our own servers.

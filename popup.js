@@ -1216,7 +1216,7 @@ async function performGoogleDeployment(token, data) {
   if (!scriptId) {
     await updateUI("Searching Google Drive...");
     const query = encodeURIComponent(
-      "name = 'ForgeField Assistant' and trashed = false",
+      "name = 'ForgeField' and trashed = false",
     );
     const searchRes = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id, name, mimeType)`,
@@ -1241,7 +1241,7 @@ async function performGoogleDeployment(token, data) {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ title: "ForgeField Assistant" }),
+          body: JSON.stringify({ title: "ForgeField" }),
         },
       );
       const project = await createRes.json();

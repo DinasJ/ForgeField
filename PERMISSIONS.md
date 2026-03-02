@@ -31,5 +31,5 @@ Use these one-line explanations when filling out the Chrome Web Store, Edge Add-
 
 These appear in the manifest for Google sign-in. You may need to describe them in the Google Cloud Console or store listing:
 
-- **script.projects / deployments / processes / external_request** — To create and update your Apps Script project and deployment.
+- **script.projects / deployments / external_request** — To create and update your Apps Script project and deployment, and to allow the deployed script to make outbound HTTP requests (e.g. to SKPORT and Discord). We do not request `script.processes` (view/manage running script executions); it is not required for ForgeField.
 - **drive.metadata.readonly / drive.file / drive.scripts** — To create the script in Drive and deploy it as a web app the extension can call.
