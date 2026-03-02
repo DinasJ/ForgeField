@@ -76,6 +76,24 @@ h1 {
   width: 100%;
 }
 
+/* Boot: neutral loading shell until routing is decided */
+.boot-state .progress-container,
+.boot-state .pages-wrap {
+  display: none !important;
+}
+.boot-state .boot-loader {
+  display: flex;
+}
+.boot-loader {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 120px;
+  color: #888;
+  font-size: 14px;
+}
+
 /* Wraps all page content; fills space below header and progress */
 .pages-wrap {
   display: flex;
@@ -1149,6 +1167,64 @@ button.status-checking {
   display: none;
 }
 
+.summary-redirect-reason {
+  font-size: 13px;
+  color: #e57373;
+  margin: 8px 0 12px 0;
+}
+.summary-redirect-reason.hidden-success {
+  display: none;
+}
+
+/* Setup Complete · Google automation explanation */
+.summary-explain-block {
+  margin-bottom: 16px;
+}
+
+.summary-explain-text {
+  font-size: 12px;
+  color: #aaa;
+  margin: 0 0 6px 0;
+  line-height: 1.4;
+}
+
+/* Finish in Google waiting panel */
+.summary-finish-panel {
+  margin-bottom: 16px;
+}
+
+.summary-finish-panel.hidden-success {
+  display: none;
+}
+
+.summary-finish-card .dashboard-card-title {
+  margin-bottom: 8px;
+}
+
+.summary-finish-text {
+  font-size: 12px;
+  color: #ccc;
+  margin: 0 0 10px 0;
+  line-height: 1.45;
+}
+
+.summary-finish-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.summary-finish-actions .btn-dashboard-primary,
+.summary-finish-actions .btn-dashboard-secondary {
+  width: 100%;
+  border-radius: 6px;
+}
+
+.summary-finish-card .summary-view-script-link.hidden-success {
+  display: none;
+}
+
 /* Subtle success indicators: checkmark on success pills */
 
 .summary-page .summary-title {
@@ -1366,19 +1442,6 @@ button.status-checking {
 .status-pill.status-pill--loading {
   background: #2a2a2a;
   color: #888;
-}
-
-/* Google Access: note + button */
-#page-dashboard .dashboard-google-access-note {
-  margin: 0 0 12px 0;
-  font-size: 12px;
-  color: #888;
-  line-height: 1.4;
-}
-
-#page-dashboard #btn-enable-google-access {
-  width: 100%;
-  border-radius: 6px;
 }
 
 /* Actions: primary slightly larger, secondary smaller; 10–12px gap */

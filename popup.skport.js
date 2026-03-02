@@ -19,7 +19,9 @@ const syncGameSession = async () => {
           func: () => localStorage.getItem("APP_CURRENT_ROLE_GAME_ROLE:endfield"),
         }, (results) => {
           const rawRole = results?.[0]?.result;
-          const cleanedRole = rawRole ? rawRole.replace(/::/g, '') : null;
+          // Game may store e.g. "3::6210208872::3"; API expects "3_6210208872_3"
+          let cleanedRole = rawRole ? rawRole.replace(/::/g, "_") : null;
+          if (cleanedRole && typeof normalizeSkGameRole === "function") cleanedRole = normalizeSkGameRole(cleanedRole);
 
           chrome.cookies.get({ url: tab.url, name: "SK_OAUTH_CRED_KEY" }, (cookie) => {
             const foundCred = cookie ? cookie.value : null;

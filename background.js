@@ -61,7 +61,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // Open Google Access tab; set googleWebAppAuthorized when user closes that tab (background listener persists after popup closes)
+  // Open Google Access tab; keep authorization flag controlled by popup (no auto-true on close)
   if (message.action === "OPEN_GOOGLE_ACCESS_TAB") {
     const url = message.webAppUrl;
     if (!url) {
@@ -70,17 +70,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     chrome.tabs.create({ url }, (tab) => {
       if (tab && tab.id) {
-        const tabId = tab.id;
-        const onRemoved = (closedId) => {
-          if (closedId === tabId) {
-            chrome.tabs.onRemoved.removeListener(onRemoved);
-            chrome.storage.local.set({ googleWebAppAuthorized: true }, () => {
-              chrome.runtime.sendMessage({ action: "GOOGLE_ACCESS_GRANTED" }).catch(() => {});
-            });
-          }
-        };
-        chrome.tabs.onRemoved.addListener(onRemoved);
-        sendResponse({ status: "ok", tabId });
+        sendResponse({ status: "ok", tabId: tab.id });
       } else {
         sendResponse({ status: "error", message: "Failed to open tab" });
       }

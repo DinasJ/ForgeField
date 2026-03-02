@@ -27,16 +27,45 @@ const lifecycle = {
     }
   },
 
-  // Page 3: Discord Linking (Wait for summary/status)
+  // Page 3: Setup summary (and redirect reason from boot/preflight)
   p3: () => {
     if (DEBUG) console.log("LIFECYCLE: Entering Step 3 (Discord)");
-    // Ensure the Discord status and any summary boxes are updated immediately
-    if (typeof checkDiscordStatus === "function") {
-      checkDiscordStatus();
-    }
-    if (typeof updateSummaryBox === "function") {
-      updateSummaryBox();
-    }
+    if (typeof checkDiscordStatus === "function") checkDiscordStatus();
+    if (typeof updateSummaryBox === "function") updateSummaryBox();
+    // Show redirect reason from boot or preflight invalidation, then clear; when script missing, ensure deploy button is "Create Script"
+    chrome.storage.local.get(["dashboardRedirectReason"], (data) => {
+      const banner = document.getElementById("dashboard-redirect-reason");
+      const reason = data.dashboardRedirectReason;
+      if (banner) {
+        if (reason) {
+          banner.textContent = reason === "Authorization Required" ? "Authorization Required" : reason === "Automation Script Missing" ? "Automation Script Missing" : "Connection problem. Check your connection.";
+          banner.classList.remove("hidden-success");
+        } else {
+          banner.textContent = "";
+          banner.classList.add("hidden-success");
+        }
+      }
+      if (reason === "Automation Script Missing" || reason === "Authorization Required") {
+        const deployBtn = document.getElementById("deploy-btn");
+        if (deployBtn) {
+          deployBtn.innerText = "Create Script & Open Google Tab";
+          deployBtn.dataset.action = "sync";
+        }
+      }
+      chrome.storage.local.remove("dashboardRedirectReason");
+    });
+    // Restore Finish-in-Google panel if auth is still pending
+    chrome.storage.local.get(["googleAuthPending", "savedScriptId"], (data) => {
+      if (data.googleAuthPending) {
+        const panel = document.getElementById("finish-in-google-panel");
+        if (panel) panel.classList.remove("hidden-success");
+        const scriptLink = document.getElementById("finish-open-script-drive");
+        if (scriptLink && data.savedScriptId) {
+          scriptLink.href = `https://script.google.com/home/projects/${data.savedScriptId}/edit`;
+          scriptLink.classList.remove("hidden-success");
+        }
+      }
+    });
   },
 
   // Page 4: Final Sub-view / Confirmation
@@ -111,30 +140,90 @@ const UI_PAGES = {
   pDashboard: "page-dashboard",
 };
 
-const showPage = (id) => {
+// Derive whether automation is fully active (script + web app + authorization)
+const deriveAutomationState = (data) => {
+  const hasWebApp = !!data.webAppUrl;
+  const hasScript = !!data.savedScriptId;
+  const authorized = data.googleWebAppAuthorized === true;
+  return { automationActive: hasWebApp && hasScript && authorized };
+};
+
+// Short-lived preflight cache so "Open Dashboard" and in-popup navigation don't re-fetch every time
+const PREFLIGHT_CACHE_MS = 45 * 1000; // 45 seconds
+let lastPreflightOk = { url: null, at: 0 };
+
+// Preflight: GET webAppUrl to verify script exists and (optionally) auth state
+const preflightWebApp = async (webAppUrl) => {
+  if (!webAppUrl) return { ok: false, error: "network" };
+  if (lastPreflightOk.url === webAppUrl && (Date.now() - lastPreflightOk.at) < PREFLIGHT_CACHE_MS) {
+    return { ok: true };
+  }
+  try {
+    const res = await fetch(webAppUrl, { method: "GET", credentials: "omit" });
+    if (res.status === 200) {
+      lastPreflightOk = { url: webAppUrl, at: Date.now() };
+      return { ok: true };
+    }
+    return { ok: false, status: res.status };
+  } catch (e) {
+    if (DEBUG) console.warn("preflightWebApp error:", e);
+    return { ok: false, error: "network" };
+  }
+};
+
+// Handle preflight result: on 404/410 clear script state; on 401/403 optionally allow (e.g. open auth tab)
+const handlePreflightResult = (result, onSuccess, opts = {}) => {
+  const allowAuthTab = !!opts.allowAuthTab;
+  if (result.ok) {
+    onSuccess();
+    return;
+  }
+  lastPreflightOk = { url: null, at: 0 }; // invalidate cache on any failure
+  if (result.status === 404 || result.status === 410) {
+    chrome.storage.local.remove(["webAppUrl", "savedScriptId", "lastSyncedSnapshot"], () => {
+      chrome.storage.local.set({ dashboardRedirectReason: "Automation Script Missing" }, () => {
+        showPage("p3");
+      });
+    });
+    return;
+  }
+  if (result.status === 401 || result.status === 403) {
+    if (allowAuthTab) {
+      onSuccess();
+      return;
+    }
+    chrome.storage.local.set({ googleWebAppAuthorized: false, dashboardRedirectReason: "Authorization Required" }, () => {
+      showPage("p3");
+    });
+    return;
+  }
+  // network or other error — non-destructive warning, route to Setup
+  chrome.storage.local.set({ dashboardRedirectReason: "Connection problem" }, () => {
+    showPage("p3");
+  });
+  alert("Can't verify the automation script right now. Check your connection and try again.");
+};
+
+// Internal: apply page display (progress, hide/show, lifecycle, persist). Used by showPage.
+const applyPageDisplay = (id) => {
   const targetId = UI_PAGES[id] || id;
   const targetElement = document.getElementById(targetId);
   if (!targetElement) return;
 
-  // 1. Progress Bar Logic
   const progressContainer = document.querySelector(".progress-container");
   const progressFill = document.getElementById("progress-fill");
   const progressPercent = document.getElementById("progress-percent");
   const progressLabel = document.getElementById("progress-label");
-
   const isDashboard = targetId === "page-dashboard";
 
   if (progressContainer) {
     progressContainer.style.display = isDashboard ? "none" : "block";
-
-    // Mapping IDs to percentage/labels
     const progressMap = {
       p1: { pct: "25%", text: "Step 1 of 4 • SKPORT" },
       pGoogle: { pct: "50%", text: "Step 2 of 4 • Google" },
       p2: { pct: "75%", text: "Step 3 of 4 • Connect Discord" },
       p3: { pct: "100%", text: "Setup Complete" },
     };
-
     if (progressMap[id]) {
       progressFill.style.width = progressMap[id].pct;
       progressPercent.innerText = progressMap[id].pct;
@@ -143,31 +232,79 @@ const showPage = (id) => {
     progressContainer.classList.toggle("progress-complete", id === "p3");
   }
 
-  // 2. Navigation Persistence
   document.querySelectorAll(".setup-page, .page").forEach((p) => {
     p.style.display = "none";
   });
-
   targetElement.style.display = "flex";
-
-  // Force a UI sync whenever we switch pages to re-apply the "dimmed" state
   syncGameSession();
-
   if (lifecycle[id]) lifecycle[id]();
   chrome.storage.local.set({ lastPage: id });
+};
+
+const showPage = (id) => {
+  if (id === "pDashboard") {
+    chrome.storage.local.get(["webAppUrl", "savedScriptId", "googleWebAppAuthorized"], async (data) => {
+      if (!deriveAutomationState(data).automationActive) {
+        showPage("p3");
+        return;
+      }
+      const result = await preflightWebApp(data.webAppUrl);
+      handlePreflightResult(result, () => applyPageDisplay("pDashboard"), {});
+    });
+    return;
+  }
+  applyPageDisplay(id);
+};
+
+// Helper: go to dashboard only when automation is active; otherwise send user to Setup (p3)
+const goToDashboardIfActive = () => {
+  chrome.storage.local.get(["webAppUrl", "savedScriptId", "googleWebAppAuthorized"], (data) => {
+    const { automationActive } = deriveAutomationState(data);
+    if (automationActive) {
+      showPage("pDashboard");
+    } else {
+      showPage("p3");
+    }
+  });
 };
 
 // --- 5. INITIALIZATION ---
 
 document.addEventListener("DOMContentLoaded", () => {
-// 1. Get the last saved page from storage
-  chrome.storage.local.get(["lastPage", "setupComplete"], (data) => {
-    // Default to 'p1' if nothing is saved or if setup isn't finished
-    const pageToLoad = data.lastPage || (data.setupComplete ? "pDashboard" : "p1");
-    
-    if (DEBUG) console.log("Restoring session to:", pageToLoad);
-    showPage(pageToLoad);
-  });
+  // Deterministic boot: do NOT render lastPage immediately. Loading shell is shown via .boot-state in CSS.
+  const container = document.querySelector(".container");
+  const progressContainer = document.querySelector(".progress-container");
+
+  const reveal = (pageId) => {
+    if (container) container.classList.remove("boot-state");
+    if (progressContainer) progressContainer.style.display = pageId === "pDashboard" ? "none" : "block";
+  };
+
+  chrome.storage.local.get(
+    ["lastPage", "setupComplete", "webAppUrl", "savedScriptId", "googleWebAppAuthorized"],
+    (data) => {
+      const { automationActive } = deriveAutomationState(data);
+
+      if (automationActive) {
+        // Optimistic: show dashboard immediately; verify in background and redirect only if preflight fails
+        applyPageDisplay("pDashboard");
+        reveal("pDashboard");
+        preflightWebApp(data.webAppUrl).then((result) => {
+          if (!result.ok) {
+            handlePreflightResult(result, () => {}, {});
+            reveal("p3");
+          }
+        });
+        return;
+      }
+
+      const pageToLoad = data.lastPage || (data.setupComplete ? "pDashboard" : "p1");
+      const safePage = pageToLoad === "pDashboard" ? "p3" : pageToLoad;
+      if (DEBUG) console.log("Restoring session to:", safePage);
+      showPage(safePage);
+      reveal(safePage);
+    },
+  );
 
   // 1. Initial UI References
   const discordIdInput = document.getElementById("discordId");
@@ -265,7 +402,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (btnDone) {
-    btnDone.onclick = () => showPage("pDashboard");
+    btnDone.onclick = () => goToDashboardIfActive();
   }
 // --- NEW: Navigation for Page 4 (Final Deploy) back to Page 3 ---
 const backToDiscord = document.getElementById("back-from-3");
@@ -304,36 +441,44 @@ if (backToDiscord) {
           "webhookUrl",
           "accountNickname",
         ]);
-        if (!data.webAppUrl) throw new Error("No Web App URL");
+        if (!data.webAppUrl) {
+          if (statusEl) { statusEl.innerText = "No Web App URL"; statusEl.style.color = "#e57373"; }
+          return;
+        }
 
-        const selectedHour = parseInt(timeInput.split(":")[0]);
-        const payload = {
-          action: "SCHEDULE",
-          scheduledHour: selectedHour,
-          profiles: [
-            {
-              cred: data.cred,
-              skGameRole: data.skGameRole,
-              accountNickname: data.accountNickname || "Endmin",
-              platform: "3",
-            },
-          ],
-          discordWebhook: data.webhookUrl,
-          discord_notify: true,
-        };
-
-        await fetch(data.webAppUrl, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify(payload),
-        });
-
-        await chrome.storage.local.set({ savedClaimTime: timeInput });
-        if (scheduleEl) scheduleEl.textContent = `Runs daily at ${timeInput}`;
-        if (statusEl) statusEl.innerText = "";
-        enableAutoBtn.textContent = "Enabled";
-        enableAutoBtn.classList.add("is-enabled");
+        const result = await preflightWebApp(data.webAppUrl);
+        handlePreflightResult(
+          result,
+          async () => {
+            const selectedHour = parseInt(timeInput.split(":")[0]);
+            const payload = {
+              action: "SCHEDULE",
+              scheduledHour: selectedHour,
+              profiles: [
+                {
+                  cred: data.cred,
+                  skGameRole: normalizeSkGameRole(data.skGameRole),
+                  accountNickname: data.accountNickname || "Endmin",
+                  platform: "3",
+                },
+              ],
+              discordWebhook: data.webhookUrl,
+              discord_notify: true,
+            };
+            await fetch(data.webAppUrl, {
+              method: "POST",
+              mode: "no-cors",
+              headers: { "Content-Type": "text/plain" },
+              body: JSON.stringify(payload),
+            });
+            await chrome.storage.local.set({ savedClaimTime: timeInput });
+            if (scheduleEl) scheduleEl.textContent = `Runs daily at ${timeInput}`;
+            if (statusEl) { statusEl.innerText = ""; statusEl.style.color = ""; }
+            enableAutoBtn.textContent = "Enabled";
+            enableAutoBtn.classList.add("is-enabled");
+          },
+          {},
+        );
       } catch (err) {
         if (statusEl) {
           statusEl.innerText = "Failed to schedule.";
@@ -411,54 +556,22 @@ document.getElementById("btn-skport-login").addEventListener("click", () => {
 const btnOpenScript = document.getElementById("btn-open-script");
 if (btnOpenScript) {
   btnOpenScript.addEventListener("click", () => {
-    chrome.storage.local.get(["savedScriptId"], (data) => {
+    chrome.storage.local.get(["webAppUrl", "savedScriptId"], async (data) => {
       const scriptId = data.savedScriptId;
-      if (scriptId) {
-        const url = `https://script.google.com/home/projects/${scriptId}/edit`;
-        chrome.tabs.create({ url });
-      } else {
+      if (!scriptId) {
         alert("Sync to Google Drive first to create the script. Use the setup flow to deploy.");
-      }
-    });
-  });
-}
-
-const btnEnableGoogleAccess = document.getElementById("btn-enable-google-access");
-if (btnEnableGoogleAccess) {
-  btnEnableGoogleAccess.addEventListener("click", () => {
-    chrome.storage.local.get(["webAppUrl"], (data) => {
-      if (!data.webAppUrl) {
-        alert("Sync to Google Drive first to get the web app URL.");
         return;
       }
-      // Background opens the tab and sets the flag when the tab is closed (listener lives in background so it survives popup close).
-      // Fallback: if the background listener never fires (e.g. service worker slept), set the flag after 4s so the user can proceed.
-      chrome.runtime.sendMessage({ action: "OPEN_GOOGLE_ACCESS_TAB", webAppUrl: data.webAppUrl }, () => {
-        if (DEBUG && chrome.runtime.lastError) console.warn("OPEN_GOOGLE_ACCESS_TAB:", chrome.runtime.lastError.message);
-        if (typeof checkTokenHealth === "function") checkTokenHealth();
-      });
-      let fallbackId = setTimeout(() => {
-        chrome.storage.local.get(["googleWebAppAuthorized"], (d) => {
-          if (!d.googleWebAppAuthorized) {
-            chrome.storage.local.set({ googleWebAppAuthorized: true }, () => {
-              if (typeof checkTokenHealth === "function") checkTokenHealth();
-            });
-          }
-        });
-      }, 4000);
-      const onGranted = (msg) => {
-        if (msg && msg.action === "GOOGLE_ACCESS_GRANTED") {
-          clearTimeout(fallbackId);
-          chrome.runtime.onMessage.removeListener(onGranted);
-        }
-      };
-      chrome.runtime.onMessage.addListener(onGranted);
-      setTimeout(() => chrome.runtime.onMessage.removeListener(onGranted), 5000);
+      const result = await preflightWebApp(data.webAppUrl);
+      handlePreflightResult(result, () => {
+        const url = `https://script.google.com/home/projects/${scriptId}/edit`;
+        chrome.tabs.create({ url });
+      }, {});
     });
   });
 }
 
-// When user closes the Google Access tab, background sets the flag; if popup is open, refresh UI
+// Listener kept for backwards compatibility; background no longer auto-sets auth on close
 chrome.runtime.onMessage.addListener((message) => {
   if (message.action === "GOOGLE_ACCESS_GRANTED" && typeof checkTokenHealth === "function") {
     checkTokenHealth();
@@ -470,6 +583,13 @@ document.getElementById("btn-run-test").addEventListener("click", async () => {
   if (DEBUG) console.log("DEBUG: Auto-claim Once (POST to web app)");
   testBtn.innerText = "Testing...";
   testBtn.disabled = true;
+
+  const resetBtn = () => {
+    setTimeout(() => {
+      testBtn.innerText = "Auto-claim Once";
+      testBtn.disabled = false;
+    }, 3000);
+  };
 
   try {
     const data = await new Promise((resolve) => {
@@ -491,49 +611,79 @@ document.getElementById("btn-run-test").addEventListener("click", async () => {
       throw new Error("No Web App URL. Please sync to Google Drive first.");
     }
 
-    const payload = {
-      profiles: [
-        {
-          cred: data.cred,
-          skGameRole: data.skGameRole,
-          platform: "3",
-          vName: "1.0.0",
-          accountNickname: data.accountNickname || "Endmin",
-        },
-      ],
-      discord_notify: data.notifyEnabled,
-      discordWebhook: data.webhookUrl,
-      myDiscordID: data.discordId,
-      USER_LOCALE: "en-US",
-      USER_TIMEZONE: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      PREFER_24H: true,
-    };
-
-    await fetch(data.webAppUrl, {
-      method: "POST",
-      mode: "no-cors",
-      cache: "no-cache",
-      credentials: "omit",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload),
-    });
-
-    testBtn.innerText = "Success! ✅";
+    const result = await preflightWebApp(data.webAppUrl);
+    handlePreflightResult(
+      result,
+      async () => {
+        const payload = {
+          profiles: [
+            {
+              cred: data.cred,
+              skGameRole: normalizeSkGameRole(data.skGameRole),
+              platform: "3",
+              vName: "1.0.0",
+              accountNickname: data.accountNickname || "Endmin",
+            },
+          ],
+          discord_notify: data.notifyEnabled,
+          discordWebhook: data.webhookUrl,
+          myDiscordID: data.discordId,
+          USER_LOCALE: "en-US",
+          USER_TIMEZONE: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          PREFER_24H: true,
+        };
+        await fetch(data.webAppUrl, {
+          method: "POST",
+          mode: "no-cors",
+          cache: "no-cache",
+          credentials: "omit",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify(payload),
+        });
+        testBtn.innerText = "Success! ✅";
+      },
+      {},
+    );
   } catch (err) {
     if (DEBUG) console.error("DEBUG: CRITICAL ERROR:", err.message);
-    // If the request failed, access may have been revoked or never granted — clear flag so user re-enables
     chrome.storage.local.remove("googleWebAppAuthorized", () => {
       if (typeof checkTokenHealth === "function") checkTokenHealth();
     });
     alert(err.message);
     testBtn.innerText = "Failed ❌";
   } finally {
-    setTimeout(() => {
-      testBtn.innerText = "Auto-claim Once";
-      testBtn.disabled = false;
-    }, 3000);
+    resetBtn();
   }
 });
+
+// Finish-in-Google panel handlers (gated by preflight)
+const finishTakeMe = document.getElementById("finish-take-me-to-google");
+const finishIveCompleted = document.getElementById("finish-ive-completed");
+if (finishTakeMe) {
+  finishTakeMe.onclick = () => {
+    chrome.storage.local.get(["pendingAuthUrl"], async (data) => {
+      const url = data.pendingAuthUrl;
+      if (!url) return;
+      const result = await preflightWebApp(url);
+      handlePreflightResult(result, () => chrome.tabs.create({ url }), { allowAuthTab: true });
+    });
+  };
+}
+if (finishIveCompleted) {
+  finishIveCompleted.onclick = () => {
+    chrome.storage.local.get(["webAppUrl", "pendingAuthUrl"], async (data) => {
+      const url = data.pendingAuthUrl || data.webAppUrl;
+      if (!url) return;
+      const result = await preflightWebApp(url);
+      handlePreflightResult(result, () => {
+        chrome.storage.local.set(
+          { googleWebAppAuthorized: true, googleAuthPending: false },
+          () => goToDashboardIfActive(),
+        );
+      }, {});
+    });
+  };
+}
 
 // ==========================================
 // 1. AUTHENTICATION & SIGN OUT
@@ -630,9 +780,17 @@ const checkTokenHealth = async () => {
       // 2. Check SKPORT Health
       const isSkportValid = !!(data.cred && data.skGameRole);
 
-      // 3. Web app URL + user has completed Google Access (flag set when they close the permission tab)
+      // 3. Web app URL + user has completed Google Access
       const hasWebApp = !!data.webAppUrl;
       const hasAuthorizedWebApp = !!data.googleWebAppAuthorized;
+      const { automationActive } = deriveAutomationState(data);
+
+      // If dashboard is visible but automation is no longer active, send user back to Setup
+      const dashboardEl = document.getElementById("page-dashboard");
+      if (dashboardEl && dashboardEl.style.display !== "none" && !automationActive) {
+        showPage("p3");
+        return;
+      }
 
       // 4. Update Dashboard Button States — all required; Auto-claim and Daily stay disabled until access is granted
       const canOperate = isDriveValid && isSkportValid && hasWebApp && hasAuthorizedWebApp;
@@ -660,27 +818,6 @@ const checkTokenHealth = async () => {
         viewScriptBtn.disabled = !hasScript;
         viewScriptBtn.style.opacity = hasScript ? "1" : "0.3";
         viewScriptBtn.style.cursor = hasScript ? "pointer" : "not-allowed";
-      }
-
-      const enableGoogleAccessBtn = document.getElementById("btn-enable-google-access");
-      if (enableGoogleAccessBtn) {
-        enableGoogleAccessBtn.disabled = !hasWebApp;
-        enableGoogleAccessBtn.style.opacity = hasWebApp ? "1" : "0.3";
-        enableGoogleAccessBtn.style.cursor = hasWebApp ? "pointer" : "not-allowed";
-      }
-
-      const googleAccessStatus = document.getElementById("google-access-status");
-      if (googleAccessStatus) {
-        if (!hasWebApp) {
-          googleAccessStatus.textContent = "Sync first";
-          googleAccessStatus.setAttribute("data-state", "loading");
-        } else if (hasAuthorizedWebApp) {
-          googleAccessStatus.textContent = "Enabled";
-          googleAccessStatus.setAttribute("data-state", "success");
-        } else {
-          googleAccessStatus.textContent = "Not enabled";
-          googleAccessStatus.setAttribute("data-state", "warning");
-        }
       }
     },
   );
@@ -834,6 +971,18 @@ const updateProgressBar = (manualId = null, manualWebhook = null) => {
 
 const SUMMARY_SNAPSHOT_KEYS = ["webhookUrl", "accountNickname", "notifyEnabled", "discordId", "cred", "skGameRole"];
 
+/** Ensure skGameRole is in API format 3_######_3 (fix old stored value or bare number). */
+const normalizeSkGameRole = (val) => {
+  if (!val || typeof val !== "string") return val;
+  const s = val.trim();
+  if (/^3_\d+_3$/.test(s)) return s;
+  if (/^\d+$/.test(s)) {
+    if (s.length >= 2 && s[0] === "3" && s[s.length - 1] === "3") return "3_" + s.slice(1, -1) + "_3";
+    return "3_" + s + "_3";
+  }
+  return s;
+};
+
 const getSummarySnapshot = (data) => {
   const s = {};
   SUMMARY_SNAPSHOT_KEYS.forEach((k) => {
@@ -857,8 +1006,10 @@ const updateSummaryBox = (manualId = null) => {
       "notifyEnabled",
       "accountNickname",
       "webhookUrl",
+      "webAppUrl",
       "savedScriptId",
       "lastSyncedSnapshot",
+      "googleWebAppAuthorized",
     ],
     (data) => {
       const skEl = document.getElementById("stat-skport-name");
@@ -901,13 +1052,15 @@ const updateSummaryBox = (manualId = null) => {
         niEl.innerText = data.accountNickname || "—";
       }
 
-      // 5. Deploy button: primary yellow for all CTAs; "Open Dashboard" when unchanged
+      // 5. Deploy button: show "Create Script & Open Google Tab" when script missing, or when not authorized (so user can re-authorize); else "Open Dashboard" when unchanged
       if (deployBtn) {
         deployBtn.disabled = false;
         deployBtn.style.background = "";
         deployBtn.style.color = "";
-        if (!data.savedScriptId) {
-          deployBtn.innerText = "Sync to Google Drive";
+        const scriptMissing = !data.savedScriptId || !data.webAppUrl;
+        const needsAuthOrCreate = scriptMissing || data.googleWebAppAuthorized !== true;
+        if (needsAuthOrCreate) {
+          deployBtn.innerText = "Create Script & Open Google Tab";
           deployBtn.className = "btn-dashboard-primary setup-footer-primary";
           deployBtn.dataset.action = "sync";
         } else {
@@ -1040,8 +1193,8 @@ async function runTestScript() {
             action: "TEST",
             profiles: [
               {
-                cred: data.cred, // Verify this is NOT null via console before clicking
-                skGameRole: data.skGameRole,
+                cred: data.cred,
+                skGameRole: normalizeSkGameRole(data.skGameRole),
                 platform: "3",
                 vName: "1.0.0",
                 accountNickname: data.accountNickname || "Endmin",
@@ -1113,7 +1266,7 @@ async function handleDeploymentFlow() {
       // 3. Prepare the Payload
       const deploymentData = {
         cred: data.cred,
-        skGameRole: data.skGameRole,
+        skGameRole: normalizeSkGameRole(data.skGameRole),
         accountNickname: data.accountNickname || "Endmin",
         notifyEnabled: !!data.notifyEnabled,
         webhookUrl: data.webhookUrl || "",
@@ -1145,13 +1298,49 @@ async function handleDeploymentFlow() {
           if (DEBUG) console.log("DEBUG: Deployment Success. Script ID:", result.scriptId);
           isDirty = false; // Reset the dirty flag
 
-          // Show the dashboard
-          if (typeof showPage === "function") {
-            showPage("pDashboard");
-          } else {
-            // Fallback if showPage isn't available
-            location.reload();
-          }
+          chrome.storage.local.get(["googleWebAppAuthorized"], (d) => {
+            const state = deriveAutomationState({ webAppUrl: result.webAppUrl, savedScriptId: result.scriptId, googleWebAppAuthorized: d.googleWebAppAuthorized });
+            if (state.automationActive) {
+              goToDashboardIfActive();
+              return;
+            }
+
+            // Gate opening auth tab: preflight with allowAuthTab so 401/403 still open tab
+            preflightWebApp(result.webAppUrl).then((preflightResult) => {
+              handlePreflightResult(
+                preflightResult,
+                () => {
+                  chrome.storage.local.set(
+                    { pendingAuthUrl: result.webAppUrl, googleAuthPending: true },
+                    () => {
+                      chrome.runtime.sendMessage(
+                        { action: "OPEN_GOOGLE_ACCESS_TAB", webAppUrl: result.webAppUrl },
+                        () => {},
+                      );
+                    },
+                  );
+                },
+                { allowAuthTab: true },
+              );
+            });
+
+            // Show the Finish-in-Google panel and success message
+            const finishPanel = document.getElementById("finish-in-google-panel");
+            if (finishPanel) finishPanel.classList.remove("hidden-success");
+            const scriptLink = document.getElementById("finish-open-script-drive");
+            if (scriptLink) {
+              scriptLink.href = `https://script.google.com/home/projects/${result.scriptId}/edit`;
+              scriptLink.classList.remove("hidden-success");
+            }
+            const successMsg = document.getElementById("success-message");
+            if (successMsg) successMsg.classList.remove("hidden-success");
+
+            // Restore button UI
+            deployBtn.disabled = false;
+            deployBtn.className = "btn-dashboard-primary setup-footer-primary";
+            deployBtn.innerText = "Create Script & Open Google Tab";
+            deployBtn.dataset.action = "sync";
+          });
         });
       } else {
         throw new Error(
@@ -1172,12 +1361,12 @@ async function handleDeploymentFlow() {
   });
 }
 
-// Deploy button: sync to Google or just go back to dashboard if nothing changed
+// Deploy button: create/update script & open Google tab, or go back to dashboard when active
 const deployBtnEl = document.getElementById("deploy-btn");
 if (deployBtnEl) {
   deployBtnEl.onclick = () => {
     if (deployBtnEl.dataset.action === "dashboard") {
-      if (typeof showPage === "function") showPage("pDashboard");
+      goToDashboardIfActive();
     } else {
       handleDeploymentFlow();
     }
@@ -1265,7 +1454,32 @@ async function performGoogleDeployment(token, data) {
     ],
   };
 
+  const syncedProfiles = [{ cred: data.cred, skGameRole: normalizeSkGameRole(data.skGameRole), platform: "3", vName: "1.0.0", accountNickname: data.accountNickname || "Endmin" }];
   const scriptCode = `
+/** Synced from extension when this script was generated. Run runFromEditor() to claim using these values without the extension. */
+var SYNCED_PROFILES = ${JSON.stringify(syncedProfiles)};
+var SYNCED_DISCORD_WEBHOOK = ${JSON.stringify(data.webhookUrl || "")};
+var SYNCED_MY_DISCORD_ID = ${JSON.stringify(data.discordId || "")};
+var SYNCED_USER_TIMEZONE = ${JSON.stringify(userTimeZone)};
+
+function getDefaultConfig() {
+  return {
+    profiles: SYNCED_PROFILES,
+    discord_notify: !!SYNCED_DISCORD_WEBHOOK,
+    discordWebhook: SYNCED_DISCORD_WEBHOOK,
+    myDiscordID: SYNCED_MY_DISCORD_ID,
+    USER_TIMEZONE: SYNCED_USER_TIMEZONE
+  };
+}
+
+/** Run this from the Apps Script editor (Run -> runFromEditor) to perform check-in without the extension. */
+function runFromEditor() {
+  var config = getDefaultConfig();
+  var results = main(config);
+  console.log(JSON.stringify(results, null, 2));
+  return results;
+}
+
 function doGet(e) {
   var result = { status: "error", message: "No data" };
   try {
@@ -1304,6 +1518,9 @@ function doPost(e) {
 }
 
 function main(config) {
+  if (!config || !config.profiles || config.profiles.length === 0) {
+    config = getDefaultConfig();
+  }
   const profiles = config.profiles || [];
   const results = profiles.map(autoClaimFunction);
   if (config.discord_notify && config.discordWebhook) {
@@ -1317,10 +1534,29 @@ function autoClaimFunction({ cred, skGameRole, platform, vName, accountNickname 
     const attendanceUrl = 'https://zonai.skport.com/web/v1/game/endfield/attendance';
     let token = "";
     try { token = refreshToken(cred, platform, vName); } catch (e) {
-      return { name: accountNickname, success: false, status: "Auth Failed", rewards: e.message };
+      token = "";
     }
     const sign = generateSign('/web/v1/game/endfield/attendance', '', timestamp, token, platform, vName);
-    const header = { 'User-Agent': 'Mozilla/5.0', 'Accept': '*/*', 'Content-Type': 'application/json', 'sk-game-role': skGameRole, 'cred': cred, 'platform': platform, 'vName': vName, 'timestamp': timestamp, 'sign': sign };
+    const header = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0',
+      'Accept': '*/*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br, zstd',
+      'Referer': 'https://game.skport.com/',
+      'Content-Type': 'application/json',
+      'sk-language': 'en',
+      'sk-game-role': skGameRole,
+      'cred': cred,
+      'platform': platform,
+      'vName': vName,
+      'timestamp': timestamp,
+      'sign': sign,
+      'Origin': 'https://game.skport.com',
+      'Connection': 'keep-alive',
+      'Sec-Fetch-Dest': 'empty',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Site': 'same-site'
+    };
     try {
         const res = UrlFetchApp.fetch(attendanceUrl, { method: 'POST', headers: header, muteHttpExceptions: true });
         const json = JSON.parse(res.getContentText());
@@ -1345,7 +1581,7 @@ function autoClaimFunction({ cred, skGameRole, platform, vName, accountNickname 
 function postWebhook(results, config) {
     const allSuccess = results.every(r => r.success);
     const now = new Date();
-    const timeZone = config.USER_TIMEZONE || "${userTimeZone}";
+    const timeZone = config.USER_TIMEZONE || SYNCED_USER_TIMEZONE || "UTC";
     const timeString = now.toLocaleString("en-US", { timeZone: timeZone });
     const payload = {
         username: "Perlica",
@@ -1362,16 +1598,33 @@ function postWebhook(results, config) {
 }
 
 function refreshToken(cred, platform, vName) {
-    const res = UrlFetchApp.fetch('https://zonai.skport.com/web/v1/auth/refresh', { headers: { cred, platform, vName } });
+    const refreshUrl = 'https://zonai.skport.com/web/v1/auth/refresh';
+    const header = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'application/json, text/plain, */*',
+      'cred': cred,
+      'platform': platform,
+      'vName': vName,
+      'Origin': 'https://game.skport.com',
+      'Referer': 'https://game.skport.com/'
+    };
+    const res = UrlFetchApp.fetch(refreshUrl, { method: 'GET', headers: header, muteHttpExceptions: true });
     const json = JSON.parse(res.getContentText());
-    if (json.code === 0 && json.data) return json.data.token;
+    if (json.code === 0 && json.data && json.data.token) return json.data.token;
     throw new Error(json.message || "Auth Error");
 }
 
 function generateSign(path, body, timestamp, token, platform, vName) {
-    const str = path + body + timestamp + '{"platform":"' + platform + '","timestamp":"' + timestamp + '","dId":"","vName":"' + vName + '"}';
-    const hmac = Utilities.computeHmacSha256Signature(str, token || '').map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
-    return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, hmac).map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
+    let str = path + body + timestamp;
+    const headerJson = '{"platform":"' + platform + '","timestamp":"' + timestamp + '","dId":"","vName":"' + vName + '"}';
+    str += headerJson;
+    const hmacBytes = Utilities.computeHmacSha256Signature(str, token || '');
+    const hmacHex = bytesToHex(hmacBytes);
+    const md5Bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, hmacHex);
+    return bytesToHex(md5Bytes);
+}
+function bytesToHex(bytes) {
+    return bytes.map(function(b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
 }
 
 function setupDailyTrigger(config) {
@@ -1384,8 +1637,12 @@ function setupDailyTrigger(config) {
 }
 
 function automatedMain() {
-  const savedConfig = PropertiesService.getScriptProperties().getProperty('lastConfig');
-  if (savedConfig) main(JSON.parse(savedConfig));
+  var savedConfig = PropertiesService.getScriptProperties().getProperty('lastConfig');
+  if (savedConfig) {
+    main(JSON.parse(savedConfig));
+  } else {
+    main(getDefaultConfig());
+  }
 }
 `;
 

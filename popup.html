@@ -4,10 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ForgeField</title>
+    <style>
+      /* Critical boot: show loader immediately so first paint is fast */
+      .boot-state .progress-container,
+      .boot-state .pages-wrap { display: none !important; }
+      .boot-state .boot-loader { display: flex !important; }
+    </style>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="container">
+    <div class="container boot-state">
       <div class="header">
         <svg 
   class="logo-icon"
@@ -63,6 +69,8 @@ to="1200 0"
 
 </svg>
       </div>
+
+      <div id="boot-loader" class="boot-loader" aria-live="polite">Loading…</div>
 
       <div class="progress-container">
         <div class="progress-stats">
@@ -206,8 +214,9 @@ to="1200 0"
         <div class="setup-page-content">
           <div class="card-dashboard summary-page-inner">
             <p class="summary-page-subtitle">All connections are ready.</p>
+            <p id="dashboard-redirect-reason" class="summary-redirect-reason hidden-success" aria-live="polite"></p>
 
-            <section class="dashboard-section" aria-labelledby="summary-setup-heading">
+          <section class="dashboard-section" aria-labelledby="summary-setup-heading">
             <div class="dashboard-card summary-setup-card">
               <h3 id="summary-setup-heading" class="dashboard-card-title">Setup Summary</h3>
               <ul class="dashboard-status-list" role="list">
@@ -231,16 +240,34 @@ to="1200 0"
             </div>
           </section>
 
+          <div class="summary-explain-block">
+            <p class="summary-explain-text">This will create a private Apps Script in your Google Drive.</p>
+            <p class="summary-explain-text">You'll review and authorize it before it can run.</p>
+            <p class="summary-explain-text">Next: we'll open a Google tab for one-time permission.</p>
+          </div>
+
+          <div id="finish-in-google-panel" class="summary-finish-panel hidden-success" aria-live="polite">
+            <div class="dashboard-card summary-finish-card">
+              <h3 class="dashboard-card-title">Finish in Google</h3>
+              <p class="summary-finish-text">A Google tab is open. Complete the one-time permission, then return here.</p>
+              <div class="summary-finish-actions">
+                <button id="finish-take-me-to-google" type="button" class="btn-dashboard-primary">Take me to Google</button>
+                <button id="finish-ive-completed" type="button" class="btn-dashboard-secondary">I've completed it</button>
+              </div>
+              <a id="finish-open-script-drive" href="#" class="summary-view-script-link hidden-success" target="_blank" rel="noopener">Open script in Drive</a>
+            </div>
+          </div>
+
           <div id="success-message" class="summary-success hidden-success">
             <div class="dashboard-card dashboard-card--success">
-              <p class="dashboard-success-text">Your script is synchronizing. You may now open the dashboard.</p>
+              <p class="dashboard-success-text">Script created. A Google tab has opened so you can review and grant permission.</p>
             </div>
           </div>
           </div>
         </div>
         <div id="deploy-controls" class="setup-page-footer">
           <button id="back-from-3" type="button" class="btn-dashboard-secondary">Back</button>
-          <button id="deploy-btn" type="button" class="btn-dashboard-primary setup-footer-primary">Sync to Google Drive</button>
+          <button id="deploy-btn" type="button" class="btn-dashboard-primary setup-footer-primary">Create Script &amp; Open Google Tab</button>
         </div>
       </div>
 
@@ -269,20 +296,6 @@ to="1200 0"
                   <span id="token-status-text" class="status-pill" data-state="loading">Checking...</span>
                 </li>
               </ul>
-            </div>
-          </section>
-
-          <section class="dashboard-section" aria-labelledby="dashboard-google-access-heading">
-            <div class="dashboard-card">
-              <h3 id="dashboard-google-access-heading" class="dashboard-card-title">Google Access</h3>
-              <ul class="dashboard-status-list" role="list">
-                <li class="dashboard-status-item">
-                  <span class="dashboard-status-label">Access</span>
-                  <span id="google-access-status" class="status-pill" data-state="loading">Checking...</span>
-                </li>
-              </ul>
-              <p class="dashboard-google-access-note">You’ll be asked to grant access once. This is required for the extension to work.</p>
-              <button id="btn-enable-google-access" type="button" class="btn-dashboard-primary">Enable Google Access</button>
             </div>
           </section>
 
