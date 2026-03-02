@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="logo-dark.svg"/>
+    <img src="logo-light.svg" alt="ForgeField" width="320"/>
+  </picture>
+</p>
+
 # ForgeField
 
 **Connect SKPORT with Google Apps Script and Discord for automation and notifications.**
