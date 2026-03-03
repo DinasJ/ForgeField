@@ -28,15 +28,18 @@ span {
 
 html {
   width: 330px;
-  min-height: 100%;
+  height: 600px;
+  max-height: 600px;
   background-color: #0c0c0c;
   color: #ffffff;
   font-family: "HarmonyOS Sans", sans-serif;
+  overflow: hidden;
 }
 
 body {
   width: 330px;
-  min-height: 100vh;
+  height: 600px;
+  max-height: 600px;
   margin: 0;
   padding: 10px;
   background-color: #0c0c0c;
@@ -44,10 +47,11 @@ body {
   font-family: "HarmonyOS Sans", sans-serif;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-/* --- 2. HEADER & PROGRESS --- */
+/* --- 2. HEADER & PROGRESS (fixed at top) --- */
 .header {
   margin-bottom: 5px;
   display: flex;
@@ -67,13 +71,15 @@ h1 {
   font-weight: 700;
 }
 
-/* --- 3. LAYOUT & PAGES --- */
+/* --- 3. LAYOUT & PAGES (fixed 620px container) --- */
 .container {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 100%;
   width: 100%;
+  overflow: hidden;
 }
 
 /* Boot: neutral loading shell until routing is decided */
@@ -101,6 +107,7 @@ h1 {
   flex: 1;
   min-height: 0;
   width: 100%;
+  overflow: hidden;
 }
 
 .setup-page {
@@ -111,15 +118,18 @@ h1 {
   width: 100%;
   animation: fadeIn 0.3s ease-out;
   justify-content: flex-start;
+  overflow: hidden;
 }
 
-/* Scrollable content area; footer stays fixed at bottom */
+/* Main content: no scroll in onboarding (fixed container); footer stays pinned */
 .setup-page-content {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 6px 0 0;
-  padding-bottom: 18px;
+  padding-bottom: 12px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Persistent bottom action bar (all setup steps) */
@@ -147,6 +157,206 @@ h1 {
 
 .setup-page-footer .setup-footer-primary {
   flex: 1.2;
+}
+
+/* --- Settings page (Dashboard → Settings → Back to Dashboard) --- */
+.settings-page .settings-page-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-bottom: 14px;
+}
+
+.settings-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.settings-back-btn {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  background: transparent;
+  color: #888;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.settings-back-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #b0b0b0;
+  border-color: #505050;
+}
+
+.settings-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.settings-section {
+  margin-bottom: 18px;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 10px 0;
+}
+
+.settings-section-title--danger {
+  color: #e57373;
+}
+
+.settings-card {
+  background: #1a1a1a;
+  border: 1px solid #2e2e2e;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.settings-card:last-child {
+  margin-bottom: 0;
+}
+
+.settings-card--danger {
+  border-color: #4a2a2a;
+  background: rgba(40, 20, 20, 0.3);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.settings-row--actions {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #252525;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-label {
+  font-size: 12px;
+  color: #ccc;
+}
+
+.settings-link-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.settings-link-btn:hover {
+  color: #b0b0b0;
+}
+
+.settings-cta-btn {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.settings-hint {
+  font-size: 11px;
+  color: #888;
+  margin: 6px 0 0 0;
+}
+
+.settings-hint.hidden {
+  display: none;
+}
+
+.settings-discord-fields {
+  margin-top: 10px;
+}
+
+.settings-field-label {
+  display: block;
+  font-size: 12px;
+  color: #aaa;
+  margin: 10px 0 4px 0;
+}
+
+.settings-field-label:first-child {
+  margin-top: 0;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #e0e0e0;
+  box-sizing: border-box;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: #555;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.settings-time {
+  max-width: 120px;
+}
+
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  gap: 10px;
+}
+
+.settings-toggle-label {
+  font-size: 12px;
+  color: #ccc;
+}
+
+.settings-danger-desc {
+  font-size: 11px;
+  color: #888;
+  margin: 0 0 10px 0;
+  line-height: 1.4;
+}
+
+.settings-danger-btn {
+  display: block;
+  margin-top: 4px;
 }
 
 .card.setup-card {
@@ -390,8 +600,10 @@ button.status-checking {
 .discord-setup-page .setup-page-content {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding-bottom: 24px;
+  gap: 14px;
+  padding-bottom: 12px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .setup-page--skport .dashboard-card.setup-step-card,
@@ -399,7 +611,7 @@ button.status-checking {
   background: #1a1a1a;
   border: 1px solid #2e2e2e;
   border-radius: 8px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   flex: 0 0 auto;
 }
@@ -461,6 +673,28 @@ button.status-checking {
 
 .setup-connect-block {
   margin-top: 12px;
+}
+.setup-connect-block.hidden {
+  display: none !important;
+}
+
+/* SKPORT: static success state when connected (replaces button) */
+.setup-skport-connected-state {
+  margin-top: 12px;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #252525;
+  color: #888;
+  border: 1px solid #333;
+  border-radius: 6px;
+  text-align: center;
+}
+.setup-skport-connected-state.hidden {
+  display: none !important;
+}
+.setup-skport-connected-label {
+  display: block;
 }
 
 .btn-skport-connect {
@@ -533,6 +767,19 @@ button.status-checking {
   display: none !important;
 }
 
+.setup-google-script-access {
+  margin: 4px 0 0 0;
+  font-size: 11px;
+  color: #6a6a6a;
+  line-height: 1.3;
+}
+
+.setup-section-divider {
+  border: none;
+  border-top: 1px solid #252525;
+  margin: 10px 0;
+}
+
 .setup-page--google .hidden {
   display: none !important;
 }
@@ -541,12 +788,14 @@ button.status-checking {
   display: inline-block;
   margin-top: 10px;
   font-size: 11px;
-  color: #555;
+  color: #777;
   text-decoration: none;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
 }
 .setup-signout-link:hover {
-  color: #e57373;
+  color: #bdbdbd;
+  text-decoration: underline;
+  text-decoration-color: #bdbdbd;
 }
 
 /* --- Discord setup: design-system alignment (summary/dashboard) --- */
@@ -554,16 +803,16 @@ button.status-checking {
   background: #1a1a1a;
   border: 1px solid #2e2e2e;
   border-radius: 8px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   flex: 0 0 auto;
 }
 
 .discord-setup-page .discord-card-label {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
-/* Block spacing: 24px between major sections */
+/* Block spacing: compact for fixed-height container */
 .discord-setup-page .discord-block {
   margin-bottom: 0;
 }
@@ -590,6 +839,40 @@ button.status-checking {
 .discord-status-row-wrap.hidden,
 .discord-connect-wrap.hidden {
   display: none !important;
+}
+
+.discord-link-below-btn {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #6a6a6a;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.discord-link-below-btn:hover {
+  color: #888;
+}
+
+.discord-toggle-id-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  font-size: 14px;
+  line-height: 1;
+  background: transparent;
+  color: #6a6a6a;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.discord-toggle-id-btn:hover {
+  color: #888;
+  background: rgba(255,255,255,0.06);
+}
+.discord-toggle-id-btn[aria-label="Hide"] span {
+  font-size: 12px;
 }
 
 .discord-status-row-wrap {
@@ -691,7 +974,7 @@ button.status-checking {
 
 /* User ID field: label on top, help + Hide aligned */
 .discord-setup-page .discord-id-field-wrap {
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
 .discord-setup-page .discord-id-field-wrap.hidden {
@@ -799,8 +1082,8 @@ button.status-checking {
 }
 
 .discord-setup-page .tip-box {
-  margin-top: 16px;
-  padding: 12px;
+  margin-top: 10px;
+  padding: 10px;
   margin-bottom: 0;
 }
 
@@ -810,7 +1093,7 @@ button.status-checking {
 }
 
 .discord-setup-page .discord-webhook-card .dashboard-card-title {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .discord-setup-page .discord-field-label {
@@ -1114,12 +1397,23 @@ button.status-checking {
   display: none !important;
 }
 
-/* --- Summary page (Page 3) — completion state, no duplicate heading --- */
+/* --- Summary page (Page 3) — fixed height, no scroll --- */
 #page-3.summary-page {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.summary-page .setup-page-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 12px;
 }
 
 .summary-page .summary-page-inner {
@@ -1127,22 +1421,30 @@ button.status-checking {
   flex-direction: column;
   gap: 0;
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .summary-page-subtitle {
   font-size: 13px;
   color: #888;
-  margin: 0 0 18px 0;
+  margin: 0 0 6px 0;
   line-height: 1.4;
   font-weight: 400;
+  flex-shrink: 0;
+}
+.summary-page-subtitle--secondary {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #999;
 }
 
 .summary-page .dashboard-section {
-  margin-bottom: 18px;
-}
-
-.summary-page .dashboard-section {
-  margin-bottom: 18px;
+  margin-bottom: 12px;
+  flex-shrink: 1;
+  min-height: 0;
 }
 
 .summary-page .dashboard-section:last-of-type {
@@ -1167,18 +1469,77 @@ button.status-checking {
   display: none;
 }
 
+.summary-page #dashboard-redirect-reason {
+  flex-shrink: 0;
+}
+
 .summary-redirect-reason {
   font-size: 13px;
   color: #e57373;
-  margin: 8px 0 12px 0;
+  margin: 4px 0 8px 0;
+}
+.summary-redirect-reason--warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.summary-redirect-reason--warning::before {
+  content: "!";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #b71c1c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
 }
 .summary-redirect-reason.hidden-success {
   display: none;
 }
 
-/* Setup Complete · Google automation explanation */
-.summary-explain-block {
-  margin-bottom: 16px;
+/* Activation card: same style as Setup Summary, CTA inside card */
+#summary-activation-state {
+  flex-shrink: 0;
+}
+
+.summary-activation-card {
+  margin-bottom: 0;
+}
+
+.summary-activation-card .summary-explain-text {
+  font-size: 12px;
+  color: #aaa;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.summary-activation-card .summary-explain-text:last-of-type {
+  margin-bottom: 12px;
+}
+
+.summary-card-cta,
+.summary-activation-card .btn-dashboard-primary {
+  width: 100%;
+  margin: 0 0 8px 0;
+}
+
+.summary-cta-note--inside {
+  margin: 0;
+  font-size: 11px;
+  color: #9e9e9e;
+  text-align: left;
+  line-height: 1.35;
+}
+
+.summary-cta-note {
+  margin: 6px auto 0 auto;
+  font-size: 11px;
+  color: #9e9e9e;
+  text-align: center;
 }
 
 .summary-explain-text {
@@ -1190,11 +1551,46 @@ button.status-checking {
 
 /* Finish in Google waiting panel */
 .summary-finish-panel {
-  margin-bottom: 16px;
+  margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .summary-finish-panel.hidden-success {
   display: none;
+}
+
+#summary-activation-state.hidden-success,
+#summary-setup-section.hidden-success,
+.summary-summary-bar.hidden-success {
+  display: none !important;
+}
+
+.summary-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.summary-summary-bar span {
+  white-space: nowrap;
+}
+
+.summary-finish-back-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 11px;
+  color: #777;
+  text-decoration: none;
+}
+
+.summary-finish-back-link:hover {
+  color: #bdbdbd;
+  text-decoration: underline;
 }
 
 .summary-finish-card .dashboard-card-title {
@@ -1264,6 +1660,12 @@ button.status-checking {
   flex: 1 1 auto;
   min-height: 0;
   padding: 6px 0 14px;
+  overflow: hidden;
+}
+
+#page-dashboard .card-dashboard {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 

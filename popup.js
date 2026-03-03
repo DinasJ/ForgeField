@@ -10,6 +10,11 @@ const DEBUG = false; // set true for development / support
 let page2SubStep = "ID";
 let isCapturing = false;
 let isDirty = false;
+let currentSetupPage = null;
+let googleInitialized = false;
+let googleWasConnected = null;
+let hasAdvancedPastStep1 = false;
+let hasAdvancedPastStep2 = false;
 
 // --- 3. LIFECYCLE DEFINITION (Fixes ReferenceError) ---
 // --- 3. UPDATED LIFECYCLE DEFINITION ---
@@ -37,8 +42,16 @@ const lifecycle = {
       const banner = document.getElementById("dashboard-redirect-reason");
       const reason = data.dashboardRedirectReason;
       if (banner) {
+        banner.classList.remove("summary-redirect-reason--warning");
         if (reason) {
-          banner.textContent = reason === "Authorization Required" ? "Authorization Required" : reason === "Automation Script Missing" ? "Automation Script Missing" : "Connection problem. Check your connection.";
+          if (reason === "Authorization Required") {
+            banner.textContent = "Authorization Required";
+            banner.classList.add("summary-redirect-reason--warning");
+          } else if (reason === "Automation Script Missing") {
+            banner.textContent = "Automation Script Missing";
+          } else {
+            banner.textContent = "Connection problem. Check your connection.";
+          }
           banner.classList.remove("hidden-success");
         } else {
           banner.textContent = "";
@@ -54,26 +67,29 @@ const lifecycle = {
       }
       chrome.storage.local.remove("dashboardRedirectReason");
     });
-    // Restore Finish-in-Google panel if auth is still pending
+    // Activation vs Finish state: replace activation block with Finish card when script created and auth pending
     chrome.storage.local.get(["googleAuthPending", "savedScriptId"], (data) => {
       if (data.googleAuthPending) {
-        const panel = document.getElementById("finish-in-google-panel");
-        if (panel) panel.classList.remove("hidden-success");
+        if (typeof updateSummaryPageState === "function") updateSummaryPageState("finish");
         const scriptLink = document.getElementById("finish-open-script-drive");
         if (scriptLink && data.savedScriptId) {
           scriptLink.href = `https://script.google.com/home/projects/${data.savedScriptId}/edit`;
           scriptLink.classList.remove("hidden-success");
         }
+      } else {
+        if (typeof updateSummaryPageState === "function") updateSummaryPageState("activation");
       }
     });
   },
 
-  // Page 4: Final Sub-view / Confirmation
+  // Page 4: Final Sub-view / Confirmation (restore ID vs Webhook sub-step from storage)
   p2: () => {
     if (DEBUG) console.log("LIFECYCLE: Entering Final Setup");
-    if (typeof updatePage2SubView === "function") {
-      updatePage2SubView();
-    }
+    chrome.storage.local.get(["page2SubStep"], (data) => {
+      if (data.page2SubStep === "WEBHOOK") page2SubStep = "WEBHOOK";
+      else page2SubStep = "ID";
+      if (typeof updatePage2SubView === "function") updatePage2SubView();
+    });
   },
 
   // Dashboard: Main App View
@@ -92,6 +108,11 @@ const lifecycle = {
         }
       },
     );
+  },
+
+  // Settings: integration & account management
+  pSettings: () => {
+    if (typeof refreshSettingsUI === "function") refreshSettingsUI();
   },
 };
 
@@ -138,6 +159,7 @@ const UI_PAGES = {
   p2: "page-2",
   p3: "page-3",
   pDashboard: "page-dashboard",
+  pSettings: "page-settings",
 };
 
 // Derive whether automation is fully active (script + web app + authorization)
@@ -210,27 +232,33 @@ const applyPageDisplay = (id) => {
   const targetElement = document.getElementById(targetId);
   if (!targetElement) return;
 
+  currentSetupPage = id;
+
   const progressContainer = document.querySelector(".progress-container");
   const progressFill = document.getElementById("progress-fill");
   const progressPercent = document.getElementById("progress-percent");
   const progressLabel = document.getElementById("progress-label");
   const isDashboard = targetId === "page-dashboard";
+  const isSettings = targetId === "page-settings";
 
-  if (progressContainer) {
-    progressContainer.style.display = isDashboard ? "none" : "block";
-    const progressMap = {
-      p1: { pct: "25%", text: "Step 1 of 4 • SKPORT" },
-      pGoogle: { pct: "50%", text: "Step 2 of 4 • Google" },
-      p2: { pct: "75%", text: "Step 3 of 4 • Connect Discord" },
-      p3: { pct: "100%", text: "Setup Complete" },
-    };
-    if (progressMap[id]) {
-      progressFill.style.width = progressMap[id].pct;
-      progressPercent.innerText = progressMap[id].pct;
-      progressLabel.innerText = progressMap[id].text;
+    if (progressContainer) {
+      progressContainer.style.display = (isDashboard || isSettings) ? "none" : "block";
+      const progressMap = {
+        p1: { pct: "25%", text: "Step 1 of 4 • SKPORT" },
+        pGoogle: { pct: "50%", text: "Step 2 of 4 • Google" },
+        p2: { pct: "75%", text: "Step 3 of 4 • Connect Discord" },
+        p3: { pct: "100%", text: "Connections Complete" },
+      };
+      if (progressMap[id]) {
+        progressFill.style.width = progressMap[id].pct;
+        progressPercent.innerText = progressMap[id].pct;
+        progressLabel.innerText = progressMap[id].text;
+      }
+      progressContainer.classList.toggle("progress-complete", id === "p3");
     }
-    progressContainer.classList.toggle("progress-complete", id === "p3");
-  }
+
+  if (id === "pGoogle") hasAdvancedPastStep1 = true;
+  if (id === "p2") hasAdvancedPastStep2 = true;
 
   document.querySelectorAll(".setup-page, .page").forEach((p) => {
     p.style.display = "none";
@@ -238,7 +266,8 @@ const applyPageDisplay = (id) => {
   targetElement.style.display = "flex";
   syncGameSession();
   if (lifecycle[id]) lifecycle[id]();
-  chrome.storage.local.set({ lastPage: id });
+  // Don't persist Settings as lastPage so reopening popup shows Dashboard
+  if (id !== "pSettings") chrome.storage.local.set({ lastPage: id });
 };
 
 const showPage = (id) => {
@@ -375,25 +404,21 @@ document.addEventListener("DOMContentLoaded", () => {
   // 4. Navigation Listeners
   const btnRedeploy = document.getElementById("btn-redeploy");
   if (btnRedeploy) {
-    btnRedeploy.onclick = () => {
-      // Switch to the first setup page to "re-do" the process
-      showPage("p1"); 
-      // Log it so we can verify in the console
-      if (DEBUG) console.log("Navigating to Setup/Redeploy (p1)");
+    btnRedeploy.onclick = () => showPage("pSettings");
+  }
+
+  const skportContinue = document.getElementById("skport-continue-btn");
+  if (skportContinue) {
+    skportContinue.onclick = () => {
+      if (!skportContinue.disabled) showPage("pGoogle");
     };
   }
 
-  const skportNext = document.getElementById("skport-next-btn");
-  if (skportNext) {
-    skportNext.onclick = () => {
-      if (!skportNext.disabled) showPage("pGoogle");
+  const googleContinue = document.getElementById("google-continue-btn");
+  if (googleContinue) {
+    googleContinue.onclick = () => {
+      if (!googleContinue.disabled) showPage("p2");
     };
-  }
-  
-
-  const googleNext = document.getElementById("google-next-btn");
-  if (googleNext) {
-    googleNext.onclick = () => showPage("p2");
   }
 
   const backTo1 = document.getElementById("back-to-1-from-google");
@@ -409,6 +434,97 @@ const backToDiscord = document.getElementById("back-from-3");
 if (backToDiscord) {
   backToDiscord.onclick = () => showPage("p2");
 }
+
+  // Settings: Back to Dashboard
+  const settingsBackBtn = document.getElementById("settings-back-to-dashboard");
+  if (settingsBackBtn) settingsBackBtn.onclick = () => showPage("pDashboard");
+
+  // Settings: SKPORT Disconnect (clear stored session)
+  const settingsSkportDisconnect = document.getElementById("settings-skport-disconnect");
+  if (settingsSkportDisconnect) {
+    settingsSkportDisconnect.onclick = () => {
+      if (!confirm("Clear SKPORT session? You can reconnect by opening SKPORT in a tab.")) return;
+      chrome.storage.local.remove(["cred", "skGameRole"], () => {
+        if (typeof syncGameSession === "function") syncGameSession();
+        if (typeof refreshSettingsUI === "function") refreshSettingsUI();
+      });
+    };
+  }
+
+  // Settings: Google Reauthorize & Disconnect
+  const settingsGoogleReauth = document.getElementById("settings-google-reauthorize");
+  const settingsGoogleDisconnect = document.getElementById("settings-google-disconnect");
+  if (settingsGoogleReauth) settingsGoogleReauth.onclick = () => { if (typeof handleGoogleAuth === "function") handleGoogleAuth(); };
+  if (settingsGoogleDisconnect) {
+    settingsGoogleDisconnect.onclick = () => {
+      if (!confirm("Disconnect Google? You will need to reauthorize to use the script.")) return;
+      if (typeof handleGoogleSignOut === "function") handleGoogleSignOut();
+      if (typeof refreshSettingsUI === "function") refreshSettingsUI();
+    };
+  }
+
+  // Settings: Discord fields persist to storage
+  const settingsWebhook = document.getElementById("settings-webhook");
+  const settingsNickname = document.getElementById("settings-nickname");
+  const settingsNotifyToggle = document.getElementById("settings-notify-toggle");
+  if (settingsWebhook) {
+    settingsWebhook.addEventListener("input", () => {
+      const v = settingsWebhook.value.trim();
+      if (v.startsWith("https://discord.com/api/webhooks/")) chrome.storage.local.set({ webhookUrl: v });
+    });
+    settingsWebhook.addEventListener("blur", () => chrome.storage.local.set({ webhookUrl: settingsWebhook.value.trim() }));
+  }
+  if (settingsNickname) {
+    settingsNickname.addEventListener("input", () => chrome.storage.local.set({ accountNickname: settingsNickname.value.trim() }));
+    settingsNickname.addEventListener("blur", () => chrome.storage.local.set({ accountNickname: settingsNickname.value.trim() }));
+  }
+  if (settingsNotifyToggle) {
+    settingsNotifyToggle.addEventListener("change", () => chrome.storage.local.set({ notifyEnabled: settingsNotifyToggle.checked }));
+  }
+
+  // Settings: Discord Disconnect
+  const settingsDiscordDisconnect = document.getElementById("settings-discord-disconnect");
+  if (settingsDiscordDisconnect) {
+    settingsDiscordDisconnect.onclick = () => {
+      if (!confirm("Sign out from Discord?")) return;
+      if (typeof handleDiscordSignOut === "function") handleDiscordSignOut();
+      if (typeof refreshSettingsUI === "function") refreshSettingsUI();
+    };
+  }
+
+  // Settings: Default claim time
+  const settingsClaimTime = document.getElementById("settings-claim-time");
+  if (settingsClaimTime) {
+    settingsClaimTime.addEventListener("change", () => {
+      const v = settingsClaimTime.value || "18:00";
+      chrome.storage.local.set({ savedClaimTime: v }, () => {
+        if (typeof updateDashboardAutomationUI === "function") updateDashboardAutomationUI(v);
+      });
+    });
+  }
+
+  // Settings: Reset automation
+  const settingsResetAutomation = document.getElementById("settings-reset-automation");
+  if (settingsResetAutomation) {
+    settingsResetAutomation.onclick = () => {
+      if (!confirm("Reset automation? Script link and authorization will be cleared. You can set up again from the setup flow.")) return;
+      chrome.storage.local.remove(["webAppUrl", "savedScriptId", "googleWebAppAuthorized", "lastSyncedSnapshot", "dashboardRedirectReason"], () => {
+        if (typeof refreshSettingsUI === "function") refreshSettingsUI();
+        showPage("p3");
+      });
+    };
+  }
+
+  // Dashboard: clicking expired Google badge opens Settings → Google
+  const tokenStatusText = document.getElementById("token-status-text");
+  if (tokenStatusText) {
+    tokenStatusText.addEventListener("click", () => {
+      if (tokenStatusText.getAttribute("data-state") === "warning") {
+        showPage("pSettings");
+        setTimeout(() => document.getElementById("settings-google")?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100);
+      }
+    });
+  }
 
   // 5. Action Handlers (Google, Discord, Automation)
   const googleAuth = document.getElementById("google-auth-btn");
@@ -500,6 +616,7 @@ if (backToDiscord) {
         const manualId = idField ? idField.value.trim() : "";
         if (/^\d{17,20}$/.test(manualId)) chrome.storage.local.set({ discordId: manualId });
         page2SubStep = "WEBHOOK";
+        chrome.storage.local.set({ page2SubStep: "WEBHOOK" });
         if (typeof updatePage2SubView === "function") updatePage2SubView();
       } else {
         if (page2SubStep === "WEBHOOK") {
@@ -519,6 +636,7 @@ if (backToDiscord) {
     backFrom2.onclick = () => {
       if (page2SubStep === "WEBHOOK" && toggle && toggle.checked) {
         page2SubStep = "ID";
+        chrome.storage.local.set({ page2SubStep: "ID" });
         if (typeof updatePage2SubView === "function") updatePage2SubView();
       } else {
         showPage("pGoogle");
@@ -684,6 +802,13 @@ if (finishIveCompleted) {
     });
   };
 }
+const finishBackToSetup = document.getElementById("finish-back-to-setup");
+if (finishBackToSetup) {
+  finishBackToSetup.addEventListener("click", (e) => {
+    e.preventDefault();
+    showPage("p2");
+  });
+}
 
 // ==========================================
 // 1. AUTHENTICATION & SIGN OUT
@@ -740,7 +865,18 @@ const updateStatusUI = (isValid) => {
   if (text) {
     text.innerText = isValid ? "Cloud Active" : "Token Expired / Missing";
     text.setAttribute("data-state", isValid ? "success" : "warning");
+    text.style.cursor = isValid ? "default" : "pointer";
+    text.title = isValid ? "" : "Token expired — click to open Settings";
   }
+  const settingsPill = document.getElementById("settings-google-pill");
+  const settingsHint = document.getElementById("settings-google-hint");
+  const settingsReauth = document.getElementById("settings-google-reauthorize");
+  if (settingsPill) {
+    settingsPill.innerText = isValid ? "Connected" : "Token expired";
+    settingsPill.setAttribute("data-state", isValid ? "success" : "warning");
+  }
+  if (settingsHint) settingsHint.classList.toggle("hidden", isValid);
+  if (settingsReauth) settingsReauth.style.display = isValid ? "none" : "";
 };
 
 // `updateSKPORTLinkUI` moved to popup.skport.js
@@ -827,17 +963,42 @@ const checkGoogleStatus = () => {
   chrome.storage.local.get(["googleToken"], (data) => {
     const connectedBlock = document.getElementById("google-connected-block");
     const connectWrap = document.getElementById("google-connect-wrap");
-    const next = document.getElementById("google-next-btn");
+    const continueBtn = document.getElementById("google-continue-btn");
     const pill = document.getElementById("page-google-stat");
+    const descDisconnected = document.getElementById("setup-google-desc-disconnected");
+    const descConnected = document.getElementById("setup-google-desc-connected");
 
-    if (data.googleToken) {
+    const isConnected = !!data.googleToken;
+
+    if (continueBtn) {
+      continueBtn.style.display = hasAdvancedPastStep2 ? "" : "none";
+      continueBtn.disabled = !isConnected;
+      continueBtn.style.opacity = isConnected ? "1" : "0.45";
+    }
+
+    if (!googleInitialized) {
+      googleWasConnected = isConnected;
+      googleInitialized = true;
+    } else {
+      const justConnected = !googleWasConnected && isConnected;
+      googleWasConnected = isConnected;
+      if (
+        justConnected &&
+        typeof currentSetupPage !== "undefined" &&
+        currentSetupPage === "pGoogle" &&
+        typeof showPage === "function"
+      ) {
+        setTimeout(() => {
+          if (currentSetupPage === "pGoogle") showPage("p2");
+        }, 1000);
+      }
+    }
+
+    if (isConnected) {
       if (connectedBlock) connectedBlock.classList.remove("hidden");
       if (connectWrap) connectWrap.classList.add("hidden");
-      if (next) {
-        next.disabled = false;
-        next.classList.add("btn-action");
-        next.classList.remove("btn-secondary");
-      }
+      if (descDisconnected) descDisconnected.classList.add("hidden");
+      if (descConnected) descConnected.classList.remove("hidden");
       if (pill) {
         pill.textContent = "Connected";
         pill.setAttribute("data-state", "success");
@@ -846,11 +1007,8 @@ const checkGoogleStatus = () => {
     } else {
       if (connectedBlock) connectedBlock.classList.add("hidden");
       if (connectWrap) connectWrap.classList.remove("hidden");
-      if (next) {
-        next.disabled = true;
-        next.classList.add("btn-secondary");
-        next.classList.remove("btn-action");
-      }
+      if (descDisconnected) descDisconnected.classList.remove("hidden");
+      if (descConnected) descConnected.classList.add("hidden");
       if (pill) {
         pill.textContent = "Not connected";
         pill.setAttribute("data-state", "warning");
@@ -859,6 +1017,42 @@ const checkGoogleStatus = () => {
     }
   });
 };
+
+const refreshSettingsUI = () => {
+  chrome.storage.local.get(
+    ["cred", "skGameRole", "googleToken", "webhookUrl", "accountNickname", "notifyEnabled", "discordId", "savedClaimTime"],
+    (data) => {
+      const skportPill = document.getElementById("settings-skport-pill");
+      const isSkport = !!(data.cred && data.cred !== "PENDING" && data.skGameRole && data.skGameRole.length > 5);
+      if (skportPill) {
+        skportPill.innerText = isSkport ? "Connected" : "Disconnected";
+        skportPill.setAttribute("data-state", isSkport ? "success" : "warning");
+      }
+
+      if (typeof checkTokenHealth === "function") checkTokenHealth();
+
+      const discordPill = document.getElementById("settings-discord-pill");
+      const hasWebhook = !!(data.webhookUrl && data.webhookUrl.startsWith("https://discord.com/api/webhooks/"));
+      const hasId = /^\d{17,20}$/.test((data.discordId || "").trim());
+      const discordReady = hasWebhook || (data.notifyEnabled !== false && hasId);
+      if (discordPill) {
+        discordPill.innerText = discordReady ? "Connected" : "Not connected";
+        discordPill.setAttribute("data-state", discordReady ? "success" : "warning");
+      }
+
+      const webhookInput = document.getElementById("settings-webhook");
+      const nicknameInput = document.getElementById("settings-nickname");
+      const notifyToggle = document.getElementById("settings-notify-toggle");
+      if (webhookInput) webhookInput.value = data.webhookUrl || "";
+      if (nicknameInput) nicknameInput.value = data.accountNickname || "";
+      if (notifyToggle) notifyToggle.checked = data.notifyEnabled !== false;
+
+      const claimTimeInput = document.getElementById("settings-claim-time");
+      if (claimTimeInput) claimTimeInput.value = data.savedClaimTime || "18:00";
+    },
+  );
+};
+
 // ==========================================
 // 3. UTILITY FUNCTIONS
 // ==========================================
@@ -994,6 +1188,43 @@ const getSummarySnapshot = (data) => {
   });
   return JSON.stringify(s);
 };
+
+function updateSummaryPageState(mode) {
+  const setupSection = document.getElementById("summary-setup-section");
+  const summaryBar = document.getElementById("summary-summary-bar");
+  const activationState = document.getElementById("summary-activation-state");
+  const finishPanel = document.getElementById("finish-in-google-panel");
+  const deployControls = document.getElementById("deploy-controls");
+
+  if (mode === "finish") {
+    if (setupSection) setupSection.classList.add("hidden-success");
+    if (summaryBar) {
+      const sk = document.getElementById("stat-skport-name");
+      const go = document.getElementById("stat-google-name");
+      const ds = document.getElementById("stat-discord-id");
+      const skEl = document.getElementById("summary-bar-skport");
+      const goEl = document.getElementById("summary-bar-google");
+      const dsEl = document.getElementById("summary-bar-discord");
+      if (skEl) skEl.textContent = sk && sk.textContent === "Connected" ? "SKPORT ✓" : "SKPORT —";
+      if (goEl) goEl.textContent = go && go.textContent === "Connected" ? "Google ✓" : "Google —";
+      if (dsEl) dsEl.textContent = ds && (ds.textContent === "Enabled" || ds.textContent === "Connected") ? "Discord ✓" : "Discord —";
+      summaryBar.classList.remove("hidden-success");
+      summaryBar.setAttribute("aria-hidden", "false");
+    }
+    if (activationState) activationState.classList.add("hidden-success");
+    if (finishPanel) finishPanel.classList.remove("hidden-success");
+    if (deployControls) deployControls.style.display = "flex";
+  } else {
+    if (setupSection) setupSection.classList.remove("hidden-success");
+    if (summaryBar) {
+      summaryBar.classList.add("hidden-success");
+      summaryBar.setAttribute("aria-hidden", "true");
+    }
+    if (activationState) activationState.classList.remove("hidden-success");
+    if (finishPanel) finishPanel.classList.add("hidden-success");
+    if (deployControls) deployControls.style.display = "flex";
+  }
+}
 
 const updateSummaryBox = (manualId = null) => {
   chrome.storage.local.get(
@@ -1324,18 +1555,13 @@ async function handleDeploymentFlow() {
               );
             });
 
-            // Show the Finish-in-Google panel and success message
-            const finishPanel = document.getElementById("finish-in-google-panel");
-            if (finishPanel) finishPanel.classList.remove("hidden-success");
+            // Replace activation section with Finish in Google (no stacking)
+            if (typeof updateSummaryPageState === "function") updateSummaryPageState("finish");
             const scriptLink = document.getElementById("finish-open-script-drive");
             if (scriptLink) {
               scriptLink.href = `https://script.google.com/home/projects/${result.scriptId}/edit`;
               scriptLink.classList.remove("hidden-success");
             }
-            const successMsg = document.getElementById("success-message");
-            if (successMsg) successMsg.classList.remove("hidden-success");
-
-            // Restore button UI
             deployBtn.disabled = false;
             deployBtn.className = "btn-dashboard-primary setup-footer-primary";
             deployBtn.innerText = "Create Script & Open Google Tab";

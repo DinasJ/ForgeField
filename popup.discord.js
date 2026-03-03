@@ -68,7 +68,7 @@ const handleDiscordSignOut = (e) => {
     const editLink = document.getElementById("edit-manually-link");
     const hideLink = document.getElementById("hide-manual-link");
     if (manualWrap) manualWrap.classList.add("hidden");
-    if (editLink) { editLink.classList.remove("hidden"); editLink.textContent = "Use User ID Instead"; }
+    if (editLink) { editLink.classList.remove("hidden"); editLink.textContent = "Use User ID instead"; }
     if (hideLink) hideLink.classList.add("hidden");
     if (typeof updatePage2SubView === "function") updatePage2SubView();
     if (typeof validateDiscordId === "function") validateDiscordId("");
@@ -90,7 +90,7 @@ const updatePage2SubView = () => {
       if (nextBtn2) {
         nextBtn2.disabled = false;
         nextBtn2.className = "btn-dashboard-primary setup-footer-primary";
-        nextBtn2.innerText = "Next";
+        nextBtn2.innerText = "Continue to Activation";
       }
       return;
     }
@@ -105,14 +105,14 @@ const updatePage2SubView = () => {
         idInput.style.cursor = data.discordUsername ? "not-allowed" : "text";
       }
       validateDiscordId();
-      if (nextBtn2) nextBtn2.innerText = "Next";
+      if (nextBtn2) nextBtn2.innerText = "Continue";
     } else {
       if (idStepContent) idStepContent.style.display = "none";
       if (partWebhook) partWebhook.style.display = "block";
       validateWebhook();
       const nicknameField = document.getElementById("accountNickname");
       if (nicknameField) nicknameField.value = data.accountNickname || "";
-      if (nextBtn2) nextBtn2.innerText = "Next";
+      if (nextBtn2) nextBtn2.innerText = "Continue to Activation";
     }
   });
 };

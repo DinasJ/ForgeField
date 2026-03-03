@@ -1,9 +1,53 @@
 // SKPORT integration: session capture, cookie/tab scripting, and UI sync
 // Exports global functions used by popup.js: syncGameSession, updateSKPORTLinkUI, checkCredentials
 
+let skportInitialized = false;
+let skportWasLive = null;
+
+function handleSkportFlow(isLive) {
+  if (!skportInitialized) {
+    skportWasLive = isLive;
+    skportInitialized = true;
+    // Already connected on first run (e.g. reinstall with persisted storage): still advance from p1
+    if (
+      isLive &&
+      typeof currentSetupPage !== "undefined" &&
+      currentSetupPage === "p1" &&
+      typeof showPage === "function"
+    ) {
+      setTimeout(() => {
+        if (currentSetupPage === "p1") showPage("pGoogle");
+      }, 700);
+    }
+    return;
+  }
+
+  const justConnected = !skportWasLive && isLive;
+  const justDisconnected = skportWasLive && !isLive;
+  skportWasLive = isLive;
+
+  if (
+    justConnected &&
+    typeof currentSetupPage !== "undefined" &&
+    currentSetupPage === "p1" &&
+    typeof showPage === "function"
+  ) {
+    setTimeout(() => {
+      if (currentSetupPage === "p1") showPage("pGoogle");
+    }, 700);
+  } else if (
+    justDisconnected &&
+    typeof currentSetupPage !== "undefined" &&
+    currentSetupPage !== "p1" &&
+    typeof showPage === "function"
+  ) {
+    showPage("p1");
+  }
+}
+
 const syncGameSession = async () => {
   const loginBtn = document.getElementById("btn-skport-login");
-  const nextBtn = document.getElementById("skport-next-btn");
+  const continueBtn = document.getElementById("skport-continue-btn");
   const statusText = document.getElementById("status-text");
 
   chrome.storage.local.get(["cred", "skGameRole", "googleToken"], async (stored) => {
@@ -51,17 +95,24 @@ const syncGameSession = async () => {
     const statusColor = isLive ? "#22c55e" : "#ffa500";
 
     if (statusText) { statusText.innerText = statusLabel; statusText.style.color = statusColor; }
+    const connectBlock = loginBtn ? loginBtn.closest(".setup-connect-block") : null;
+    const connectedState = document.getElementById("skport-connected-state");
+    if (connectBlock) connectBlock.classList.toggle("hidden", !!isLive);
+    if (connectedState) connectedState.classList.toggle("hidden", !isLive);
     if (loginBtn) {
       const textEl = loginBtn.querySelector(".skport-btn-text");
-      if (textEl) textEl.textContent = isLive ? "✓ SKPORT Connected" : "Open SKPORT Sign-in";
-      loginBtn.disabled = !!isLive;
-      loginBtn.classList.toggle("dimmed-button", isLive);
-      loginBtn.classList.toggle("skport-connected", isLive);
+      if (textEl) textEl.textContent = "Sign in to SKPORT";
+      loginBtn.disabled = false;
+      loginBtn.classList.remove("dimmed-button", "skport-connected");
     }
-    if (nextBtn) {
-      nextBtn.disabled = !isLive;
-      nextBtn.style.opacity = isLive ? "1" : "0.3";
-      nextBtn.classList.toggle("btn-active", isLive);
+    if (continueBtn) {
+      const showContinue = typeof hasAdvancedPastStep1 !== "undefined" && hasAdvancedPastStep1;
+      continueBtn.style.display = showContinue ? "" : "none";
+      continueBtn.disabled = !isLive;
+      continueBtn.style.opacity = isLive ? "1" : "0.45";
+      continueBtn.classList.toggle("btn-action", isLive);
+      const footer = continueBtn.closest(".setup-page-footer");
+      if (footer) footer.style.display = showContinue ? "" : "none";
     }
 
     // Page 1: SKPORT status pill
@@ -84,6 +135,8 @@ const syncGameSession = async () => {
       dashStat.innerText = statusLabel;
       dashStat.setAttribute("data-state", isLive ? "success" : "warning");
     }
+
+    handleSkportFlow(isLive);
   }
 };
 
@@ -94,12 +147,15 @@ const updateSKPortLinkUI = () => {
     const statusColor = isLive ? "#22c55e" : "#ffa500";
 
     const skportLoginBtn = document.getElementById("btn-skport-login");
+    const dashConnectBlock = skportLoginBtn ? skportLoginBtn.closest(".setup-connect-block") : null;
+    const dashConnectedState = document.getElementById("skport-connected-state");
+    if (dashConnectBlock) dashConnectBlock.classList.toggle("hidden", !!isLive);
+    if (dashConnectedState) dashConnectedState.classList.toggle("hidden", !isLive);
     if (skportLoginBtn) {
       const textEl = skportLoginBtn.querySelector(".skport-btn-text");
-      if (textEl) textEl.textContent = isLive ? "✓ SKPORT Connected" : "Open SKPORT Sign-in";
-      skportLoginBtn.disabled = !!isLive;
-      skportLoginBtn.classList.toggle("dimmed-button", isLive);
-      skportLoginBtn.classList.toggle("skport-connected", isLive);
+      if (textEl) textEl.textContent = "Sign in to SKPORT";
+      skportLoginBtn.disabled = false;
+      skportLoginBtn.classList.remove("dimmed-button", "skport-connected");
     }
 
     const page1Stat = document.getElementById("page1-stat-skport-name");
@@ -119,6 +175,8 @@ const updateSKPortLinkUI = () => {
       dashStat.innerText = statusLabel;
       dashStat.setAttribute("data-state", isLive ? "success" : "warning");
     }
+
+    handleSkportFlow(isLive);
   });
 };
 
@@ -128,26 +186,29 @@ const checkCredentials = () => {
     const hasCred = data.cred && data.cred !== "PENDING" && data.cred !== null;
 
     const statusEl = document.getElementById("status-text");
-    const nextBtn = document.getElementById("skport-next-btn");
+    const continueBtn = document.getElementById("skport-continue-btn");
 
     if (hasRole && hasCred) {
       if (statusEl) {
         statusEl.innerText = "Connected";
         statusEl.style.color = "#4CAF50";
       }
-      if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.className = "btn-action";
+      if (continueBtn) {
+        continueBtn.disabled = false;
+        continueBtn.classList.add("btn-action");
+        continueBtn.style.opacity = "1";
       }
+      handleSkportFlow(true);
       isCapturing = false;
     } else {
       if (statusEl) {
         statusEl.innerText = "Disconnected";
         statusEl.style.color = "#ffa500";
       }
-      if (nextBtn) {
-        nextBtn.disabled = true;
-        nextBtn.className = "btn-secondary";
+      if (continueBtn) {
+        continueBtn.disabled = true;
+        continueBtn.classList.remove("btn-action");
+        continueBtn.style.opacity = "0.45";
       }
       if (!isCapturing) {
         isCapturing = true;
